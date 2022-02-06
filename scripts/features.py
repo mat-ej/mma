@@ -19,12 +19,15 @@
 # + tags=["parameters"]
 upstream = None
 product = None
-filename = '../data/per_min_debuts.csv'
+filename = None
 
 # + tags=["injected-parameters"]
 # Parameters
-filename = "data/per_min_debuts.csv"
-product = {"data": "/home/m/repo/mma/products/data/features.csv", "nb": "/home/m/repo/mma/products/nb/features.ipynb"}
+filename = "/home/m/repo/mma/data/per_min_debuts.csv"
+product = {
+    "data": "/home/m/repo/mma/products/data/features.csv",
+    "nb": "/home/m/repo/mma/products/nb/features.ipynb",
+}
 
 # -
 
@@ -46,7 +49,13 @@ df = df.convert_dtypes()
 outcomes = ['DECISION', 'KO', 'SUBMISSION']
 print(df[outcomes].sum())
 outcomes_prior = df[outcomes].sum().values / len(df)
+
+print("Outcomes prior")
+print("DEC, KO, SUB")
 print(outcomes_prior)
+
+print("DEBUT COUNT")
+print(((df['R_DEBUT'] + df['B_DEBUT']) >= 1).sum())
 
 target = ['R_DEC', 'R_KO', 'R_SUB', 'B_DEC', 'B_KO', 'B_SUB']
 target_odds = ['R_DEC_ODDS', 'R_KO_ODDS', 'R_SUB_ODDS', 'B_DEC_ODDS', 'B_KO_ODDS', 'B_SUB_ODDS']
@@ -61,5 +70,6 @@ df['B_SUB'] = ~df.WINNER.astype(bool) * df.SUBMISSION.astype(bool)
 df[target] = df[target].astype(int)
 
 df.drop(columns=['DECISION', 'KO', 'SUBMISSION', 'R_WEIGHT', 'B_WEIGHT'], inplace=True)
+
 
 df.to_csv(product['data'], index=False)

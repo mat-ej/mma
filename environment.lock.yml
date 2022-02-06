@@ -7,6 +7,9 @@ dependencies:
   - python=3.8
   - auto-sklearn
   - pip
+  - h2o
+  - matplotlib
+  - jupyterlab
   - pip:
     - ploomber
     - pandas

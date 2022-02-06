@@ -44,8 +44,16 @@ product = None
 
 # + tags=["injected-parameters"]
 # Parameters
-upstream = {"split-train-test": {"train": "/home/m/repo/mma/products/data/train.csv", "test": "/home/m/repo/mma/products/data/test.csv"}}
-product = {"nb": "/home/m/repo/mma/products/reports/fit-sklearn-automl.ipynb", "model": "/home/m/repo/mma/products/models/sklearn-automl.pickle"}
+upstream = {
+    "split-train-test": {
+        "train": "/home/m/repo/mma/products/data/train.csv",
+        "test": "/home/m/repo/mma/products/data/test.csv",
+    }
+}
+product = {
+    "nb": "/home/m/repo/mma/products/reports/fit-sklearn-automl.ipynb",
+    "model": "/home/m/repo/mma/products/models/sklearn-automl.pickle",
+}
 
 
 # +
@@ -70,8 +78,8 @@ print(train_df.columns)
 
 X_columns = train_df.columns.difference(target_win + target_win_odds + target + target_odds + names + dates).to_list()
 
-train_df = train_df[X_columns + target_win].dropna()
-test_df = test_df[X_columns + target_win].dropna()
+train_df = train_df[X_columns + target_win].fillna(0.0)
+test_df = test_df[X_columns + target_win].fillna(0.0)
 
 X_train = train_df[X_columns]
 Y_train = train_df[target_win]

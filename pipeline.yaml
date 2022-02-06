@@ -8,7 +8,7 @@ meta:
     # Extract product from source code. If False, tasks must have a "product" key
     extract_product: False
 
-#executor: serial
+executor: parallel
 
 tasks:
     - source: scripts/features.py
@@ -16,9 +16,9 @@ tasks:
       upstream: null
       product:
         data: products/data/features.csv
-        nb: products/nb/features.ipynb
+        nb: products/reports/features.ipynb
       params:
-        filename: '{{PER_MIN_DEBUTS}}'
+        filename: '{{ROOT}}/{{PER_MIN_DEBUTS}}'
 
     - source: src.util.split_train_test_op
       name: split-train-test
@@ -30,20 +30,27 @@ tasks:
         test_ratio: 0.3
 
     - source: scripts/fit_sklearn_automl.py
-      name: autosklearn
+      name: automl-sklearn
       upstream: ['split-train-test']
       product:
         nb: products/reports/fit-sklearn-automl.ipynb
         model: products/models/sklearn-automl.pickle
 
     - source: scripts/fit_h2o_automl.py
-      name: h2o
+      name: automl-h2o
       upstream: [ 'split-train-test' ]
       product:
         nb: products/reports/fit_h2o_automl.ipynb
-        model: products/models/h2o_automl.pickle
       params:
-        max_models: 20
+        max_models: 5
+        models_path: '{{ROOT}}/products/models/h2o/'
+        random_seed: '{{RANDOM_SEED}}'
+
+    - source: scripts/final_evaluation.py
+      name: evaluation
+      upstream: ['automl-sklearn', 'split-train-test']
+      product:
+        nb: products/reports/final_evaluation.ipynb
 
 #    - source: scripts/fit-h2o.py
 #      name: fit-h2o.py

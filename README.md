@@ -1,6 +1,11 @@
 # mma
 Requires [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
+## NOTES:
+    ploomber build --partially C
+
+build until task C
+
 ## Setup development environment
 
 ```sh
