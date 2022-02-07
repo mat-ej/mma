@@ -7,13 +7,13 @@ dependencies:
   - python=3.8
   - auto-sklearn
   - pip
-  - h2o
   - matplotlib
   - jupyterlab
   - pip:
     - ploomber
     - pandas
     - scikit-learn
+    - http://h2o-release.s3.amazonaws.com/h2o/latest_stable_Py.html
     # if using S3...
     # - boto3
     # if using Google Cloud Storage...
