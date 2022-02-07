@@ -21,7 +21,7 @@ product = None
 # + tags=["injected-parameters"]
 # Parameters
 upstream = {
-    "autosklearn": {
+    "automl-sklearn": {
         "nb": "/home/m/repo/mma/products/reports/fit-sklearn-automl.ipynb",
         "model": "/home/m/repo/mma/products/models/sklearn-automl.pickle",
     },
@@ -46,7 +46,7 @@ import pandas as pd
 import numpy as np
 import pickle
 test_df = pd.read_csv(upstream['split-train-test']['test'])
-model = pickle.load(open(upstream['autosklearn']['model'], 'rb'))
+model = pickle.load(open(upstream['automl-sklearn']['model'], 'rb'))
 
 print(model)
 print(test_df)

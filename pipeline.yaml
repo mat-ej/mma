@@ -8,26 +8,34 @@ meta:
     # Extract product from source code. If False, tasks must have a "product" key
     extract_product: False
 
-executor: parallel
+executor: serial
 
 tasks:
+    - source: func.util.data_transform
+      name: data-transform
+      upstream: null
+      product: products/data/data.csv
+      params:
+        file_path: '{{ROOT}}/{{DATA_FILEPATH}}'
+
     - source: scripts/features.py
       name: features
-      upstream: null
+      upstream: [data-transform]
       product:
         data: products/data/features.csv
         nb: products/reports/features.ipynb
       params:
-        filename: '{{ROOT}}/{{PER_MIN_DEBUTS}}'
+        features: '{{features}}'
+        target: '{{TARGET}}'
 
-    - source: src.util.split_train_test_op
+    - source: func.util.split_train_test_op
       name: split-train-test
       upstream: ['features']
       product:
         train: products/data/train.csv
         test: products/data/test.csv
       params:
-        test_ratio: 0.3
+        test_ratio: '{{TEST_RATIO}}'
 
     - source: scripts/fit_sklearn_automl.py
       name: automl-sklearn
@@ -35,6 +43,9 @@ tasks:
       product:
         nb: products/reports/fit-sklearn-automl.ipynb
         model: products/models/sklearn-automl.pickle
+      params:
+        target: '{{TARGET}}'
+        random_seed: '{{RANDOM_SEED}}'
 
     - source: scripts/fit_h2o_automl.py
       name: automl-h2o
@@ -42,15 +53,18 @@ tasks:
       product:
         nb: products/reports/fit_h2o_automl.ipynb
       params:
-        max_models: 5
+        target: '{{TARGET}}'
+        max_models: 500
         models_path: '{{ROOT}}/products/models/h2o/'
         random_seed: '{{RANDOM_SEED}}'
-
-    - source: scripts/final_evaluation.py
-      name: evaluation
-      upstream: ['automl-sklearn', 'split-train-test']
-      product:
-        nb: products/reports/final_evaluation.ipynb
+        factors: '{{factors}}'
+        include_algos: '{{H2O_ALGOS}}'
+#
+#    - source: scripts/final_evaluation.py
+#      name: evaluation
+#      upstream: ['automl-sklearn', 'split-train-test']
+#      product:
+#        nb: products/reports/final_evaluation.ipynb
 
 #    - source: scripts/fit-h2o.py
 #      name: fit-h2o.py

@@ -19,57 +19,159 @@
 # + tags=["parameters"]
 upstream = None
 product = None
-filename = None
+target = None
+features = None
 
 # + tags=["injected-parameters"]
 # Parameters
-filename = "/home/m/repo/mma/data/per_min_debuts.csv"
+features = [
+    "TITLE_BOUT",
+    "BANTAMWEIGHT",
+    "CATCH WEIGHT",
+    "FEATHERWEIGHT",
+    "FLYWEIGHT",
+    "HEAVYWEIGHT",
+    "LIGHT HEAVYWEIGHT",
+    "LIGHTWEIGHT",
+    "MIDDLEWEIGHT",
+    "WELTERWEIGHT",
+    "WOMENS BANTAMWEIGHT",
+    "WOMENS FEATHERWEIGHT",
+    "WOMENS FLYWEIGHT",
+    "WOMENS STRAWEIGHT",
+    "R_AGE",
+    "R_HEIGHT",
+    "R_REACH",
+    "R_WIN_PCT",
+    "R_WIN_STREAK",
+    "R_LOSS_STREAK",
+    "R_KD",
+    "R_SIG_STR",
+    "R_SIG_STR_ATT",
+    "R_TOTAL_STR",
+    "R_TOTAL_STR_ATT",
+    "R_TD",
+    "R_TD_ATT",
+    "R_SUB_ATT",
+    "R_REV",
+    "R_CTRL",
+    "R_HEAD",
+    "R_HEAD_ATT",
+    "R_BODY",
+    "R_BODY_ATT",
+    "R_LEG",
+    "R_LEG_ATT",
+    "R_DISTANCE",
+    "R_DISTANCE_ATT",
+    "R_CLINCH",
+    "R_CLINCH_ATT",
+    "R_GROUND",
+    "R_GROUND_ATT",
+    "R_OPP_KD",
+    "R_OPP_SIG_STR",
+    "R_OPP_SIG_STR_ATT",
+    "R_OPP_TOTAL_STR",
+    "R_OPP_TOTAL_STR_ATT",
+    "R_OPP_TD",
+    "R_OPP_TD_ATT",
+    "R_OPP_SUB_ATT",
+    "R_OPP_REV",
+    "R_OPP_CTRL",
+    "R_OPP_HEAD",
+    "R_OPP_HEAD_ATT",
+    "R_OPP_BODY",
+    "R_OPP_BODY_ATT",
+    "R_OPP_LEG",
+    "R_OPP_LEG_ATT",
+    "R_OPP_DISTANCE",
+    "R_OPP_DISTANCE_ATT",
+    "R_OPP_CLINCH",
+    "R_OPP_CLINCH_ATT",
+    "R_OPP_GROUND",
+    "R_OPP_GROUND_ATT",
+    "B_AGE",
+    "B_HEIGHT",
+    "B_REACH",
+    "B_WIN_PCT",
+    "B_WIN_STREAK",
+    "B_LOSS_STREAK",
+    "B_KD",
+    "B_SIG_STR",
+    "B_SIG_STR_ATT",
+    "B_TOTAL_STR",
+    "B_TOTAL_STR_ATT",
+    "B_TD",
+    "B_TD_ATT",
+    "B_SUB_ATT",
+    "B_REV",
+    "B_CTRL",
+    "B_HEAD",
+    "B_HEAD_ATT",
+    "B_BODY",
+    "B_BODY_ATT",
+    "B_LEG",
+    "B_LEG_ATT",
+    "B_DISTANCE",
+    "B_DISTANCE_ATT",
+    "B_CLINCH",
+    "B_CLINCH_ATT",
+    "B_GROUND",
+    "B_GROUND_ATT",
+    "B_OPP_KD",
+    "B_OPP_SIG_STR",
+    "B_OPP_SIG_STR_ATT",
+    "B_OPP_TOTAL_STR",
+    "B_OPP_TOTAL_STR_ATT",
+    "B_OPP_TD",
+    "B_OPP_TD_ATT",
+    "B_OPP_SUB_ATT",
+    "B_OPP_REV",
+    "B_OPP_CTRL",
+    "B_OPP_HEAD",
+    "B_OPP_HEAD_ATT",
+    "B_OPP_BODY",
+    "B_OPP_BODY_ATT",
+    "B_OPP_LEG",
+    "B_OPP_LEG_ATT",
+    "B_OPP_DISTANCE",
+    "B_OPP_DISTANCE_ATT",
+    "B_OPP_CLINCH",
+    "B_OPP_CLINCH_ATT",
+    "B_OPP_GROUND",
+    "B_OPP_GROUND_ATT",
+]
+target = ["WINNER"]
+upstream = {"data-transform": "/home/m/repo/mma/products/data/data.csv"}
 product = {
     "data": "/home/m/repo/mma/products/data/features.csv",
-    "nb": "/home/m/repo/mma/products/nb/features.ipynb",
+    "nb": "/home/m/repo/mma/products/reports/features.ipynb",
 }
 
 # -
 
 import pandas as pd
 
-df = pd.read_csv(filename, parse_dates=['DATE'])
-
-drop = ['R_WEIGHT', 'B_WEIGHT']
-market = ['R_ODDS', 'B_ODDS', 'R_DEC_ODDS', 'B_DEC_ODDS', 'R_SUB_ODDS',
-       'B_SUB_ODDS', 'R_KO_ODDS', 'B_KO_ODDS']
-
-df.drop(columns=drop)
-
-df.rename(columns={'KO/TKO':'KO'}, inplace=True)
-df['DECISION'] = ((df.DECISION_SPLIT + df.DECISION_MAJORITY + df.DECISION_UNANIMOUS) > 0).astype(int)
-df.drop(columns=['DECISION_MAJORITY', 'DECISION_SPLIT', 'DECISION_UNANIMOUS'], inplace=True)
+# read first upstream
+#TODO awkward
+upstream_list = [path for path in upstream.values()]
+df = pd.read_csv(upstream_list.pop(), parse_dates=['DATE'])
 df = df.convert_dtypes()
 
+print("BASIC INFO / SANITY CHECKS")
 outcomes = ['DECISION', 'KO', 'SUBMISSION']
 print(df[outcomes].sum())
 outcomes_prior = df[outcomes].sum().values / len(df)
-
-print("Outcomes prior")
-print("DEC, KO, SUB")
 print(outcomes_prior)
 
-print("DEBUT COUNT")
-print(((df['R_DEBUT'] + df['B_DEBUT']) >= 1).sum())
+print("DEBUT COUNT = %d" % ((df['R_DEBUT'] + df['B_DEBUT']) >= 1).sum())
 
-target = ['R_DEC', 'R_KO', 'R_SUB', 'B_DEC', 'B_KO', 'B_SUB']
-target_odds = ['R_DEC_ODDS', 'R_KO_ODDS', 'R_SUB_ODDS', 'B_DEC_ODDS', 'B_KO_ODDS', 'B_SUB_ODDS']
+df = df[features + target]
 
-df['R_DEC'] = df.WINNER.astype(bool) * df.DECISION.astype(bool)
-df['R_KO'] = df.WINNER.astype(bool) * df.KO.astype(bool)
-df['R_SUB'] = df.WINNER.astype(bool) * df.SUBMISSION.astype(bool)
-
-df['B_DEC'] = ~df.WINNER.astype(bool) * df.DECISION.astype(bool)
-df['B_KO'] = ~df.WINNER.astype(bool) * df.KO.astype(bool)
-df['B_SUB'] = ~df.WINNER.astype(bool) * df.SUBMISSION.astype(bool)
-df[target] = df[target].astype(int)
-
-df.drop(columns=['DECISION', 'KO', 'SUBMISSION', 'R_WEIGHT', 'B_WEIGHT'], inplace=True)
-
+nan_cols = df.columns[df.isnull().any()].tolist()
+if nan_cols:
+    print("FEATURE, TARGET COLUMNS WITH NAN VALUES:")
+    print(nan_cols)
+else:
+    print("NO NANS in features + target cols")
 
 df.to_csv(product['data'], index=False)
