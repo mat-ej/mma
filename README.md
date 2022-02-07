@@ -20,7 +20,22 @@ conda env create --file environment.yml
 conda activate mma
 ```
 
+Default placeholders¶
+There are a few default placeholders you can use in your pipeline.yaml, even if not defined in the env.yaml (or if you don’t have a env.yaml altogether)
 
+{{here}}: Absolute path to the parent folder of pipeline.yaml
+
+{{cwd}}: Absolute path to the current working directory
+
+{{root}}: Absolute path to project’s root folder. It is usually the same as {{here}}, except when the project is a package (i.e., it has setup.py file), in such a case, it points to the parent directory of the setup.py file.
+
+{{user}}: Current username
+
+{{now}}: Current timestamp in ISO 8601 format (Added in Ploomber 0.13.4)
+
+A common use case for this is when passing paths to files to scripts/notebooks. For example, let’s say your script has to read a file from a specific location. Using {{here}} turns path into absolute so you can ready it when using Jupyter, even if the script is in a different location than your pipeline.yaml.
+
+By default, paths in tasks[*].product are interpreted relative to the parent folder of pipeline.yaml. You can use {{cwd}} or {{root}} to override this behavior:
 
 ## Running the pipeline
 

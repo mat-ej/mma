@@ -31,7 +31,7 @@ include_algos = None
 # + tags=["injected-parameters"]
 # Parameters
 target = ["WINNER"]
-max_models = 500
+max_models = 2
 models_path = "/home/m/repo/mma/products/models/h2o/"
 random_seed = 1
 factors = [
@@ -101,7 +101,7 @@ aml.train(x=X_train.columns.to_list(), y=target[0], training_frame=train_hf)
 lb = h2o.automl.get_leaderboard(aml, extra_columns = "ALL")
 print(lb.head())  # Print all rows instead of default (10 rows)
 # The leader model is stored here
-# print(aml.leader)
+print(aml.leader)
 
 
 
@@ -124,12 +124,6 @@ print(va_plot)
 
 exa = aml.leader.explain(train_hf)
 
-
-print(aml.leader)
-
-model_path = h2o.save_model(aml.leader, path = models_path, force = True)
-my_local_model = h2o.download_model(aml.leader, path=model_path)
-
 # +
 
 # # # Get model ids for all models in the AutoML Leaderboard
@@ -142,6 +136,9 @@ my_local_model = h2o.download_model(aml.leader, path=model_path)
 
 print(aml.leader.explain_row(test_hf, row_index=0))
 
+
+my_local_model = h2o.download_model(aml.leader, path=models_path)
+print(my_local_model)
 # +
 # metalearner = se.metalearner()
 # metalearner

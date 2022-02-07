@@ -33,6 +33,7 @@ import pickle
 
 import numpy as np
 from autosklearn.classification import AutoSklearnClassifier
+from dask.distributed import Client
 
 
 
@@ -73,15 +74,19 @@ Y_test = test_df[target]
 
 print(train_df.columns)
 
+client = Client(processes = False)
 
+# if debug
+# client = client(processes = False)
 automl = AutoSklearnClassifier(
         # time_left_for_this_task=30,
         # per_run_time_limit=10,
         # tmp_folder='/tmp/autosklearn_parallel_1_example_tmp',
-        n_jobs=7,
+        # n_jobs=7,
         # Each one of the 4 jobs is allocated 3GB
-        memory_limit=1024,
+        # memory_limit=1024,
         seed=random_seed,
+        dask_client=client
 )
 
 automl.fit(X_train, Y_train, dataset_name='mma')

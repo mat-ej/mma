@@ -16,7 +16,7 @@ tasks:
       upstream: null
       product: products/data/data.csv
       params:
-        file_path: '{{ROOT}}/{{DATA_FILEPATH}}'
+        file_path: '{{root}}/{{DATA_FILEPATH}}'
 
     - source: scripts/features.py
       name: features
@@ -30,7 +30,7 @@ tasks:
 
     - source: func.util.split_train_test_op
       name: split-train-test
-      upstream: ['features']
+      upstream: [features]
       product:
         train: products/data/train.csv
         test: products/data/test.csv
@@ -39,7 +39,7 @@ tasks:
 
     - source: scripts/fit_sklearn_automl.py
       name: automl-sklearn
-      upstream: ['split-train-test']
+      upstream: [split-train-test]
       product:
         nb: products/reports/fit-sklearn-automl.ipynb
         model: products/models/sklearn-automl.pickle
@@ -49,13 +49,13 @@ tasks:
 
     - source: scripts/fit_h2o_automl.py
       name: automl-h2o
-      upstream: [ 'split-train-test' ]
+      upstream: [split-train-test]
       product:
         nb: products/reports/fit_h2o_automl.ipynb
       params:
         target: '{{TARGET}}'
-        max_models: 500
-        models_path: '{{ROOT}}/products/models/h2o/'
+        max_models: '{{H2O_MODELS}}'
+        models_path: '{{root}}/products/models/h2o/'
         random_seed: '{{RANDOM_SEED}}'
         factors: '{{factors}}'
         include_algos: '{{H2O_ALGOS}}'
