@@ -25,7 +25,7 @@ target = ["WINNER"]
 upstream = {
     "automl-sklearn": {
         "nb": "/home/m/repo/mma/products/reports/fit-sklearn-automl.ipynb",
-        "model": "/home/m/repo/mma/products/models/sklearn-automl.pickle",
+        "model": "/home/m/repo/mma/backup/sklearn-automl_odds.pickle",
     },
     "automl-h2o": {"nb": "/home/m/repo/mma/products/reports/fit_h2o_automl.ipynb"},
     "split-train-test": {
@@ -33,7 +33,10 @@ upstream = {
         "test": "/home/m/repo/mma/products/data/test.csv",
     },
 }
-product = {"nb": "/home/m/repo/mma/products/reports/automl_evaluation.ipynb"}
+product = {
+    "nb": "/home/m/repo/mma/products/reports/automl_evaluation.ipynb",
+    "autosklearn_matrix": "/home/m/repo/mma/products/reports/autosklearn_matrix.html",
+}
 
 # -
 
@@ -49,6 +52,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import PipelineProfiler
+import matplotlib.pyplot as plt
 
 test_df = pd.read_csv(upstream['split-train-test']['test'])
 train_df = pd.read_csv(upstream['split-train-test']['train'])
@@ -58,6 +62,11 @@ print(test_df)
 
 print("AUTOSKLEARN PIPELINE")
 profiler_data = PipelineProfiler.import_autosklearn(automl_sklearn)
+profiler_html = PipelineProfiler.get_pipeline_profiler_html(profiler_data)
+
+with open(product['autosklearn_matrix'], "w") as file:
+    file.write(profiler_html)
+
 PipelineProfiler.plot_pipeline_matrix(profiler_data)
 
 X_test = test_df.drop(columns = target)

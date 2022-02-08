@@ -6,5 +6,5 @@ RUN apt-get update && apt-get install -y openjdk-11-jre-headless && apt-get clea
 
 
 # pygraphviz
-#TODO install environment.lock.yml
+#TODO install environment.lock.yml, htop
 USER ${NB_UID}

@@ -60,11 +60,12 @@ tasks:
         h2oautoml_config: '{{h2oautoml_config}}'
         models_path: '{{root}}/products/models/h2o'
 
-    - source: scripts/automl_evaluation.py
+    - source: ntb/automl_evaluation.ipynb
       name: automl-eval
       upstream: [automl-sklearn, automl-h2o, split-train-test]
       product:
         nb: products/reports/automl_evaluation.ipynb
+        autosklearn_matrix: products/reports/autosklearn_matrix.html
       params:
         target: '{{TARGET}}'
 

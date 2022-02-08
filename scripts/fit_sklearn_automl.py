@@ -30,6 +30,7 @@
 # add the dependencies, reload the file for Ploomber to inject the cell
 # (On JupyterLab: File -> Reload File from Disk)
 import pickle
+from pprint import pprint
 
 import numpy as np
 from autosklearn.classification import AutoSklearnClassifier
@@ -93,7 +94,9 @@ automl.fit(X_train, Y_train, dataset_name='mma')
 
 print("Statistics")
 print(automl.sprint_statistics())
-print(automl.show_models())
+# print(automl.show_models())
+pprint(automl.show_models(), indent=4)
+
 
 if len(target) == 1:
     y_test = Y_test[target[0]].values
