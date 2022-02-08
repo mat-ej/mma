@@ -2,7 +2,9 @@
 Requires [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
 ## NOTES:
-    ploomber build --partially C
+    ploomber build --partially task
+    
+    /home/jovyan/shared-volume/conda/envs/mma
 
 build until task C
 

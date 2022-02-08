@@ -22,17 +22,14 @@ import pandas as pd
 # + tags=["parameters"]
 upstream = None
 product = None
-max_models = None
 models_path = None
 random_seed = None
 target = None
 factors = None
-include_algos = None
+h2oautoml_config = None
 # + tags=["injected-parameters"]
 # Parameters
 target = ["WINNER"]
-max_models = 2
-models_path = "/home/m/repo/mma/products/models/h2o/"
 random_seed = 1
 factors = [
     "TITLE_BOUT",
@@ -50,7 +47,13 @@ factors = [
     "WOMENS FLYWEIGHT",
     "WOMENS STRAWEIGHT",
 ]
-include_algos = ["GLM", "DRF", "DeepLearning"]
+h2oautoml_config = {
+    "max_models": 10,
+    "verbosity": "warn",
+    "preprocessing": ["target_encoding"],
+    "include_algos": ["GLM"],
+}
+models_path = "/home/m/repo/mma/products/models/h2o"
 upstream = {
     "split-train-test": {
         "train": "/home/m/repo/mma/products/data/train.csv",
@@ -73,8 +76,6 @@ Y_test = test_df[target]
 
 print(train_df.columns)
 
-X_columns = X_test.columns
-
 # Start the H2O cluster (locally)
 h2o.init()
 print(h2o.estimators.xgboost.H2OXGBoostEstimator.available())
@@ -90,11 +91,11 @@ test_hf[target] = test_hf[target].asfactor()
 
 print(train_hf.describe())
 
-aml = H2OAutoML(max_models=max_models,
-                seed=random_seed,
-                verbosity = 'warn',
-                include_algos = include_algos
-                )
+
+h2oautoml_config['seed'] = random_seed
+automl = H2OAutoML(**h2oautoml_config)
+
+aml = H2OAutoML()
 
 aml.train(x=X_train.columns.to_list(), y=target[0], training_frame=train_hf)
 # View the AutoML Leaderboard
@@ -115,7 +116,7 @@ perf_test.accuracy()
 
 
 # or if some subset of the models is needed a slice of leaderboard can be used, e.g., using MAE as the sorting metric
-va_plot = h2o.varimp_heatmap(aml.leaderboard.head(1))
+va_plot = h2o.varimp_heatmap(aml.leaderboard.head(10))
 
 print(va_plot)
 

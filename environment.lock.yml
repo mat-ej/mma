@@ -15,7 +15,9 @@ dependencies:
   - ploomber
   - pandas
   - scikit-learn
-#  - pip:
+  - dask
+  - pip:
+      pipelineprofiler
 #    - http://h2o-release.s3.amazonaws.com/h2o/latest_stable_Py.html
     # if using S3...
     # - boto3

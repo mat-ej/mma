@@ -46,6 +46,7 @@ tasks:
       params:
         target: '{{TARGET}}'
         random_seed: '{{RANDOM_SEED}}'
+        autosklearn_config: '{{autosklearn_config}}'
 
     - source: scripts/fit_h2o_automl.py
       name: automl-h2o
@@ -54,17 +55,18 @@ tasks:
         nb: products/reports/fit_h2o_automl.ipynb
       params:
         target: '{{TARGET}}'
-        max_models: '{{H2O_MODELS}}'
-        models_path: '{{root}}/products/models/h2o/'
         random_seed: '{{RANDOM_SEED}}'
         factors: '{{factors}}'
-        include_algos: '{{H2O_ALGOS}}'
-#
-#    - source: scripts/final_evaluation.py
-#      name: evaluation
-#      upstream: ['automl-sklearn', 'split-train-test']
-#      product:
-#        nb: products/reports/final_evaluation.ipynb
+        h2oautoml_config: '{{h2oautoml_config}}'
+        models_path: '{{root}}/products/models/h2o'
+
+    - source: scripts/automl_evaluation.py
+      name: automl-eval
+      upstream: [automl-sklearn, automl-h2o, split-train-test]
+      product:
+        nb: products/reports/automl_evaluation.ipynb
+      params:
+        target: '{{TARGET}}'
 
 #    - source: scripts/fit-h2o.py
 #      name: fit-h2o.py

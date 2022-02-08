@@ -44,11 +44,18 @@ upstream = None
 product = None
 target = None
 random_seed = None
+autosklearn_config = None
 
 # + tags=["injected-parameters"]
 # Parameters
 target = ["WINNER"]
 random_seed = 1
+autosklearn_config = {
+    "n_jobs": 4,
+    "memory_limit": 1024,
+    "time_left_for_this_task": 30,
+    "per_run_time_limit": 10,
+}
 upstream = {
     "split-train-test": {
         "train": "/home/m/repo/mma/products/data/train.csv",
@@ -74,21 +81,14 @@ Y_test = test_df[target]
 
 print(train_df.columns)
 
-client = Client(processes = False)
+# client = Client(processes = False)
 
 # if debug
 # client = client(processes = False)
-automl = AutoSklearnClassifier(
-        # time_left_for_this_task=30,
-        # per_run_time_limit=10,
-        # tmp_folder='/tmp/autosklearn_parallel_1_example_tmp',
-        # n_jobs=7,
-        # Each one of the 4 jobs is allocated 3GB
-        # memory_limit=1024,
-        seed=random_seed,
-        dask_client=client
-)
 
+
+autosklearn_config['seed'] = random_seed
+automl = AutoSklearnClassifier(**autosklearn_config)
 automl.fit(X_train, Y_train, dataset_name='mma')
 
 print("Statistics")
