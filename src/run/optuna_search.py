@@ -1,13 +1,3 @@
-"""
-Optuna example that optimizes multi-layer perceptrons using PyTorch.
-
-In this example, we optimize the validation accuracy of hand-written digit recognition using
-PyTorch and FashionMNIST. We optimize the neural network architecture as well as the optimizer
-configuration. As it is too time consuming to use the whole FashionMNIST dataset,
-we here use a small subset of it.
-
-"""
-
 import os
 
 import joblib
@@ -28,7 +18,7 @@ from src.evaluation.evaluator import BootstrapEvaluator
 from src.pytorch.pytorch_datasets import BasicDataset
 from src.pytorch.pytorch_net_models import *
 from src.pytorch.pytorch_loss_functions import *
-from src.services.paths import PER_MIN_WEIGHTED
+from src.services.paths import PER_MIN_WEIGHTED, PER_MIN_WEIGHTED_NO_DEBUTS
 from src.services.functions import *
 
 DEVICE = torch.device("cpu")
@@ -42,7 +32,7 @@ N_VALID_EXAMPLES = BATCHSIZE * 10
 
 
 def get_necessities():
-    df = pd.read_csv(PER_MIN_WEIGHTED, header=0)
+    df = pd.read_csv(PER_MIN_WEIGHTED_NO_DEBUTS, header=0)
     training_set, test_set = split_train_test(df, 0.2)
     n = int(training_set.shape[0] * 0.2)
     valid_set = training_set.iloc[0:n]
@@ -56,15 +46,15 @@ def get_necessities():
 def objective(trial):
     dropout_rate = 0.25
     loss_function_name = 'BCE'
-    loss_function_name = 'MSE'
-    loss_function_name = 'KL'
-    loss_function_name = 'JS'
+    # loss_function_name = 'MSE'
+    # loss_function_name = 'KL'
+    # loss_function_name = 'JS'
     optimizer_name = 'SGD'
     momentum = 0.9
     lr_rate = 0.00008
     hidden_nodes = 100
     batch_size = 80
-    decorrelation_ratio = trial.suggest_float('decorrelation_ratio', 0, 4)
+    decorrelation_ratio = trial.suggest_float('decorrelation_ratio', 0, 1)
 
     net = OneHiddenLayer(58, hidden_nodes, dropout_rate)
     net.to(DEVICE)

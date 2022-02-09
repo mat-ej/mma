@@ -46,25 +46,29 @@ import numpy as np
 
 def accuracy_wk(solution, prediction, extra_argument):
     # custom function defining accuracy and accepting an additional argument
+    print("break")
     print(extra_argument)
     return np.mean(solution == prediction)
 
-accuracy_scorer = autosklearn.metrics.make_scorer(
-    name="accu_add",
-    score_func=accuracy_wk,
-    optimum=0,
-    greater_is_better=False,
-    needs_proba=True,
-    needs_threshold=False,
-    extra_argument=X_train,
-)
 
 cls = autosklearn.classification.AutoSklearnClassifier(
     time_left_for_this_task=30,
     per_run_time_limit=10,
-    seed=1,
-    metric=accuracy_scorer
+    seed=1
 )
+
+accuracy_scorer = autosklearn.metrics.make_scorer(
+    name="accu_add",
+    score_func=accuracy_wk,
+    optimum=1,
+    greater_is_better=True,
+    needs_proba=True,
+    needs_threshold=False,
+    extra_argument=cls,
+)
+
+cls.set_params(metric = accuracy_scorer)
+
 cls.fit(X_train, Y_train)
 
 predictions = cls.predict(X_test)

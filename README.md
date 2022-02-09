@@ -5,6 +5,7 @@ Requires [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
     ploomber build --partially task
     
     /home/jovyan/shared-volume/conda/envs/mma
+    conda env export --no-build --file environment.lock.yml
 
 build until task C
 

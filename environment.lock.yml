@@ -4,8 +4,7 @@ name: mma
 #  - D:\envs
 channels:
   - conda-forge
-
-
+  - pytorch
 dependencies:
   - python=3.8
   - auto-sklearn
@@ -16,6 +15,12 @@ dependencies:
   - pandas
   - scikit-learn
   - dask
+  - pytorch==1.7.1
+  - tqdm
+  - cvxpy
+  - numpy
+  - cvxopt
+  - seaborn
   - pip:
       pipelineprofiler
 #    - http://h2o-release.s3.amazonaws.com/h2o/latest_stable_Py.html

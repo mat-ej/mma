@@ -27,13 +27,13 @@ hidden_nodes = 100
 dropout_rate = 0.25
 
 test_set_size_ratio = 0.2
-dataset = PER_MIN_WEIGHTED
+dataset = PER_MIN_WEIGHTED_NO_DEBUTS
 net_model = OneHiddenLayer(58, hidden_nodes, dropout_rate)
 dataset_name = 'basic'
 
 # filepath to load model from
 current_file = os.path.abspath(os.path.dirname(__file__))
-filename = os.path.join(current_file, '../../final_models/BCE.pt')
+filename = os.path.join(current_file, '/home/m/repo/mma/final_models/BCE.pt')
 
 
 # prepare data

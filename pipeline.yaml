@@ -69,6 +69,27 @@ tasks:
       params:
         target: '{{TARGET}}'
 
+    - source: scripts/fit_pytorch.py
+      name: fit-pytorch
+      upstream: [split-train-test]
+      product:
+        nb: products/reports/fit_pytorch.ipynb
+        model: products/models/pytorch.pt
+      params:
+        target: '{{TARGET}}'
+        pytorch_config: '{{pytorch_config}}'
+        validation_ratio: 0.2
+
+    - source: scripts/evaluate_pytorch.py
+      name: eval-pytorch
+      upstream: [ split-train-test, fit-pytorch]
+      product:
+        nb: products/reports/evaluate_pytorch.ipynb
+      params:
+        target: '{{TARGET}}'
+        pytorch_config: '{{pytorch_config}}'
+
+
 #    - source: scripts/fit-h2o.py
 #      name: fit-h2o.py
 #      upstream: [ 'split-train-test' ]

@@ -51,12 +51,7 @@ autosklearn_config = None
 # Parameters
 target = ["WINNER"]
 random_seed = 1
-autosklearn_config = {
-    "n_jobs": 4,
-    "memory_limit": 1024,
-    "time_left_for_this_task": 30,
-    "per_run_time_limit": 10,
-}
+autosklearn_config = {"n_jobs": 7, "memory_limit": 1024}
 upstream = {
     "split-train-test": {
         "train": "/home/m/repo/mma/products/data/train.csv",

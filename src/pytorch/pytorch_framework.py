@@ -35,7 +35,8 @@ def train_model(training_set, validation_ratio, model, loss_function, dataset_na
             model = model.to(device)
             optimizer.zero_grad()
             outputs = model(x)
-            if type(loss_function).__name__ == 'MSEDecorrelationLoss' or type(loss_function).__name__ == 'ProfitLoss'\
+            if type(loss_function).__name__ == 'MSEDecorrelationLoss' \
+                    or type(loss_function).__name__ == 'ProfitLoss'\
                     or type(loss_function).__name__ == 'JSDecorrelationLoss'\
                     or type(loss_function).__name__ == 'KLDecorrelationLoss'\
                     or type(loss_function).__name__ == 'PearsonDecorrelationLoss'\
@@ -78,9 +79,9 @@ def train_model(training_set, validation_ratio, model, loss_function, dataset_na
         if val_accuracy > top_accuracy:
             top_accuracy = val_accuracy
 
-        if loss < top_loss:
-            top_loss = loss
-            torch.save(model.state_dict(), filename)
+        # if loss < top_loss:
+        #     top_loss = loss
+        #     torch.save(model.state_dict(), filename)
     return val_losses, accuracies
 
 
@@ -113,12 +114,3 @@ def get_optimizer(optimizer_name, model, lr_rate, momentum):
 def get_dataset(df, dataset_name):
     if dataset_name == 'basic':
         return BasicDataset(df)
-    elif dataset_name == 'filtered':
-        return FilteredDataset(df)
-    elif dataset_name == 'weighted':
-        return WeightedDataset(df)
-    elif dataset_name == 'comparison':
-        return ComparisonDataset(df)
-    elif dataset_name == 'no_odds':
-        return NoOddsDataset(df)
-

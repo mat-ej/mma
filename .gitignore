@@ -7,6 +7,10 @@
 *.json
 *.db
 
+.idea
+.idea/*
+
+
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
 **/*.ipynb_checkpoints/

@@ -48,7 +48,7 @@ factors = [
     "WOMENS STRAWEIGHT",
 ]
 h2oautoml_config = {
-    "max_models": 2,
+    "max_models": 5,
     "verbosity": "warn",
     "preprocessing": ["target_encoding"],
     "include_algos": ["GLM"],
