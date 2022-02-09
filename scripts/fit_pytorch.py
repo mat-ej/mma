@@ -39,22 +39,16 @@ product = None
 pytorch_config = None
 target = None
 validation_ratio = None
+odds_cols = None
 
 # + tags=["injected-parameters"]
 # Parameters
 target = ["WINNER"]
 pytorch_config = {}
 validation_ratio = 0.2
-upstream = {
-    "split-train-test": {
-        "train": "/home/m/repo/mma/products/data/train.csv",
-        "test": "/home/m/repo/mma/products/data/test.csv",
-    }
-}
-product = {
-    "nb": "/home/m/repo/mma/products/reports/fit_pytorch.ipynb",
-    "model": "/home/m/repo/mma/products/models/pytorch.pt",
-}
+odds_cols = ["R_ODDS", "B_ODDS"]
+upstream = {"split-train-test": {"train": "/home/m/repo/mma/products/data/train.csv", "test": "/home/m/repo/mma/products/data/test.csv"}}
+product = {"nb": "/home/m/repo/mma/products/reports/fit_pytorch.ipynb", "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict.pt", "model": "/home/m/repo/mma/products/models/pytorch.pt"}
 
 # -
 
@@ -64,69 +58,6 @@ from src.services.paths import *
 import torch.nn as nn
 import pandas as pd
 import matplotlib.pyplot as plt
-
-# class BettingDataset(Dataset):
-#     def __init__(self, x, y, odds):
-#         self.x = x
-#         self.y = y
-#         self.odds = odds
-#     def __len__(self):
-#         return self.y.shape[0]
-#
-#     def __getitem__(self, idx):
-#         return [self.x[idx], self.y[idx], self.odds[idx]]
-#
-#     def n_features(self):
-#         return self.x.shape[1]
-#
-# class NN(torch.nn.Module):
-#     def __init__(self, input_dim, hidden_nodes, hidden_layers, dropout_rate):
-#         super(NN, self).__init__()
-#
-#         self.n_hidden_layers = hidden_layers
-#
-#         if self.n_hidden_layers == 0:
-#             self.l1 = nn.Linear(input_dim, 1)
-#             nn.init.xavier_normal_(self.l1.weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
-#         else:
-#             self.l1 = nn.Linear(input_dim, hidden_nodes)
-#             nn.init.xavier_normal_(self.l1.weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
-#             self.hidden_layers = []
-#             for i in range(0, hidden_layers - 1):
-#                 self.hidden_layers.append(nn.Linear(hidden_nodes, hidden_nodes))
-#                 nn.init.xavier_normal_(self.hidden_layers[-1].weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
-#
-#             self.hidden_layers.append(nn.Linear(hidden_nodes, 1))
-#             nn.init.xavier_normal_(self.hidden_layers[-1].weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
-#
-#
-#         self.relu = nn.ReLU()
-#         self.sigmoid = nn.Sigmoid()
-#         self.dropout = nn.Dropout(p=dropout_rate)
-#         self.tanh = nn.Tanh()
-#         self.leaky = nn.LeakyReLU(0.2)
-#         self.silu = nn.SiLU()
-#
-#     def forward(self, x):
-#         if self.n_hidden_layers == 0:
-#             # x = self.silu(x)
-#             x = self.l1(x)
-#             # x = self.dropout(x)
-#             x = self.sigmoid(x)
-#         else:
-#             #x = self.silu(x)
-#             x = self.l1(x)
-#             x = self.silu(x)
-#             x = self.dropout(x)
-#             for l in self.hidden_layers:
-#                 x = l(x)
-#                 x = self.dropout(x)
-#                 #x = self.relu(x)
-#
-#             x = self.sigmoid(x)
-#
-#         return x
-
 
 def train_model(train_dataset, validation_dataset, model, loss_function,
                 batch_size, optimizer_name, lr_rate, epochs, momentum,
@@ -233,13 +164,6 @@ val_df = train_df.iloc[0:n]
 
 print(train_df.columns)
 
-x = train_df.drop(columns = target).astype(np.float32).values
-y = train_df[target].astype(np.float32).values.reshape(-1, 1)
-scaler = StandardScaler()
-x = scaler.fit_transform(x)
-odds = train_df[['R_ODDS', 'B_ODDS']].astype(np.float32).values
-
-odds_cols = ['R_ODDS', 'B_ODDS']
 x_train, y_train, odds_train = get_xyodds(train_df, odds_cols, target)
 x_val, y_val, odds_val = get_xyodds(val_df, odds_cols, target)
 x_test, y_test, odds_test = get_xyodds(test_df, odds_cols, target)
@@ -273,7 +197,7 @@ optimizer_name = 'SGD'
 #
 # # filepath to save model at
 # current_file = os.path.abspath(os.path.dirname(__file__))
-filename = product['model']
+filename = product['model_state_dict']
 #
 # # prepare data
 # df = pd.read_csv(dataset, header=0)
@@ -310,50 +234,53 @@ plt.ylabel('Loss')
 plt.legend()
 plt.show()
 
-
-model.load_state_dict(torch.load(product['model']))
-test_loader = DataLoader(dataset=test_dataset, batch_size=len(test_dataset))
-
-bootstrap_repetitions = 10
-kelly_fraction = 0.05
-
+model.load_state_dict(torch.load(product['model_state_dict']))
 model.eval()
-test_probs = np.zeros(shape=(len(test_dataset),))
-accuracy = 0
-for x, y, _ in test_loader:
-    output = model(x)
-    prediction = torch.round(output)
-    correct = prediction.eq(y).sum().item()
-    accuracy = 100 * correct / len(test_loader.dataset)
-    test_probs = output.detach().numpy().reshape(-1, )
 
+torch.save(model, product['model'])
 
-evaluator = BootstrapEvaluator(odds_test, y_test, len(y_test), bootstrap_repetitions)
-simultaneous_results = evaluator.run_simulation_simultaneous_games(test_probs, kelly_fraction)
-
-bootstrap_roi_results = simultaneous_results.roi_results
-seq_results = evaluator.run_simulation_simultaneous_games_no_bootstrap(test_probs, kelly_fraction)
-
-# print results
-print('---Predictive accuracy---')
-print('Accuracy: ' + str(accuracy) + '%')
-print('---Bootstrap results---')
-print('ROI median: ' + str(np.median(bootstrap_roi_results)))
-print('Average ROI: ' + str(bootstrap_roi_results.mean()))
-print('ROI standard deviation: ' + str(bootstrap_roi_results.std()))
-# print('Worst-case ROI: ' + str(bootstrap_roi_results.min()))
-# print('Best-case ROI: ' + str(bootstrap_roi_results.max()))
-print('Percentage of profitable simulations: ' + str(bootstrap_roi_results[bootstrap_roi_results >= 1.0].size /
-                                                     bootstrap_roi_results.size * 100) + '%')
-print('---Sequential results---')
-
-market_predictions = (odds_test[:,0] <= odds_test[:,1]).astype(int)
-test_results = y_test.flatten().astype(int)
-market_accuracy = np.sum(market_predictions == test_results) / len(test_results)
-
-print(market_accuracy)
-np.sum(market_predictions == test_results) / len(test_results)
-print(seq_results.roi_results)
+# test_loader = DataLoader(dataset=test_dataset, batch_size=len(test_dataset))
+#
+# bootstrap_repetitions = 10
+# kelly_fraction = 0.05
+#
+# model.eval()
+# test_probs = np.zeros(shape=(len(test_dataset),))
+# accuracy = 0
+# for x, y, _ in test_loader:
+#     output = model(x)
+#     prediction = torch.round(output)
+#     correct = prediction.eq(y).sum().item()
+#     accuracy = 100 * correct / len(test_loader.dataset)
+#     test_probs = output.detach().numpy().reshape(-1, )
+#
+#
+# evaluator = BootstrapEvaluator(odds_test, y_test, len(y_test), bootstrap_repetitions)
+# simultaneous_results = evaluator.run_simulation_simultaneous_games(test_probs, kelly_fraction)
+#
+# bootstrap_roi_results = simultaneous_results.roi_results
+# seq_results = evaluator.run_simulation_simultaneous_games_no_bootstrap(test_probs, kelly_fraction)
+#
+# # print results
+# print('---Predictive accuracy---')
+# print('Accuracy: ' + str(accuracy) + '%')
+# print('---Bootstrap results---')
+# print('ROI median: ' + str(np.median(bootstrap_roi_results)))
+# print('Average ROI: ' + str(bootstrap_roi_results.mean()))
+# print('ROI standard deviation: ' + str(bootstrap_roi_results.std()))
+# # print('Worst-case ROI: ' + str(bootstrap_roi_results.min()))
+# # print('Best-case ROI: ' + str(bootstrap_roi_results.max()))
+# print('Percentage of profitable simulations: ' + str(bootstrap_roi_results[bootstrap_roi_results >= 1.0].size /
+#                                                      bootstrap_roi_results.size * 100) + '%')
+# print('---Sequential results---')
+#
+# market_predictions = (odds_test[:,0] <= odds_test[:,1]).astype(int)
+# test_results = y_test.flatten().astype(int)
+# market_accuracy = np.sum(market_predictions == test_results) / len(test_results)
+#
+# print(market_accuracy)
+# np.sum(market_predictions == test_results) / len(test_results)
+# print(seq_results.roi_results)
 
 
 

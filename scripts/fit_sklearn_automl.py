@@ -52,16 +52,8 @@ autosklearn_config = None
 target = ["WINNER"]
 random_seed = 1
 autosklearn_config = {"n_jobs": 7, "memory_limit": 1024}
-upstream = {
-    "split-train-test": {
-        "train": "/home/m/repo/mma/products/data/train.csv",
-        "test": "/home/m/repo/mma/products/data/test.csv",
-    }
-}
-product = {
-    "nb": "/home/m/repo/mma/products/reports/fit-sklearn-automl.ipynb",
-    "model": "/home/m/repo/mma/products/models/sklearn-automl.pickle",
-}
+upstream = {"split-train-test": {"train": "/home/m/repo/mma/products/data/train.csv", "test": "/home/m/repo/mma/products/data/test.csv"}}
+product = {"nb": "/home/m/repo/mma/products/reports/fit-sklearn-automl.ipynb", "model": "/home/m/repo/mma/products/models/sklearn-automl.pickle"}
 
 
 # +

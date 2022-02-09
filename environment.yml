@@ -1,19 +1,31 @@
 name: mma
-
+#envs_dirs:
+#  - C:\Users\<user>\Anaconda3\envs
+#  - D:\envs
 channels:
   - conda-forge
-
+  - pytorch
 dependencies:
   - python=3.8
   - auto-sklearn
   - pip
   - matplotlib
   - jupyterlab
+  - ploomber
+  - pandas
+  - scikit-learn
+  - dask
+  - pytorch
+  - tqdm
+  - cvxpy
+  - numpy
+  - cvxopt
+  - seaborn
+  - torchvision
+  - tqdm
   - pip:
-    - ploomber
-    - pandas
-    - scikit-learn
-    - http://h2o-release.s3.amazonaws.com/h2o/latest_stable_Py.html
+      pipelineprofiler
+#    - http://h2o-release.s3.amazonaws.com/h2o/latest_stable_Py.html
     # if using S3...
     # - boto3
     # if using Google Cloud Storage...

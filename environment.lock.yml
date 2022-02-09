@@ -15,12 +15,14 @@ dependencies:
   - pandas
   - scikit-learn
   - dask
-  - pytorch==1.7.1
+  - pytorch
   - tqdm
   - cvxpy
   - numpy
   - cvxopt
   - seaborn
+  - torchvision
+  - tqdm
   - pip:
       pipelineprofiler
 #    - http://h2o-release.s3.amazonaws.com/h2o/latest_stable_Py.html
