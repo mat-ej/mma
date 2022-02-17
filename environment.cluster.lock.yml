@@ -1,9 +1,7 @@
 name: mma
-envs_dirs:
-  - /home/uhrinmat/anaconda/mma
-#envs_dirs:
-#  - C:\Users\<user>\Anaconda3\envs
-#  - D:\envs
+
+#NOTE config --add envs_dirs /home/uhrinmat/anaconda/
+
 channels:
   - conda-forge
   - pytorch
