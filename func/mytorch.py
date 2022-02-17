@@ -9,7 +9,11 @@ def get_xyodds(df, odds_cols, target):
     y = df[target].astype(np.float32).values.reshape(-1, 1)
     scaler = StandardScaler()
     x = scaler.fit_transform(x)
-    odds = df[odds_cols].astype(np.float32).values
+
+    if not odds_cols or odds_cols[0] not in df.columns:
+        odds = np.zeros_like(y)
+    else:
+        odds = df[odds_cols].astype(np.float32).values
 
     return x, y, odds
 

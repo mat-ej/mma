@@ -69,6 +69,7 @@ tasks:
       params:
         target: '{{TARGET}}'
 
+
     - source: scripts/fit_pytorch.py
       name: fit-pytorch
       upstream: [split-train-test]
@@ -78,21 +79,34 @@ tasks:
         model: products/models/pytorch.pt
       params:
         target: '{{TARGET}}'
-        pytorch_config: '{{pytorch_config}}'
+        pytorch_conf: '{{pytorch_conf}}'
+        random_seed: '{{RANDOM_SEED}}'
         validation_ratio: 0.2
-        odds_cols: '{{odds_cols}}'
+        odds_cols: ''
 
-    - source: scripts/evaluate_pytorch.py
+    - source: scripts/eval_pytorch.py
       name: eval-pytorch
-      upstream: [ split-train-test, fit-pytorch]
+      upstream: [split-train-test, fit-pytorch]
       product:
-        nb: products/reports/evaluate_pytorch.ipynb
+        nb: products/reports/eval_pytorch.ipynb
       params:
         target: '{{TARGET}}'
-        pytorch_config: '{{pytorch_config}}'
+        pytorch_conf: '{{pytorch_conf}}'
         odds_cols: '{{odds_cols}}'
         bootstrap_repetitions: 3
         kelly_fraction: 0.05
+
+#    - source: scripts/portfolio_optimization.py
+#      name: portfolio-opt
+#      upstream: [fit-pytorch, split-train-test]
+#      product:
+#        nb: products/reports/portfolio_optimization.ipynb
+#
+#    - source: scripts/bootstrap_evaluator.py
+#      name: bootstrap-eval
+#      upstream: [ portfolio-opt, split-train-test ]
+#      product:
+#        nb: products/reports/bootstrap_evaluator.ipynb
 
 
 #    - source: scripts/fit-h2o.py

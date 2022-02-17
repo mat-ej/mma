@@ -29,26 +29,41 @@ Save model's results (predictive accuracy and ROI values)
 '''
 
 # + tags=["parameters"]
-from torch.nn import BCELoss
-
-from func.mytorch import BettingDataset, NN, get_xyodds
-from src.evaluation.evaluator import BootstrapEvaluator
-
 upstream = None
 product = None
-pytorch_config = None
+pytorch_conf = None
 target = None
+random_seed = None
 validation_ratio = None
 odds_cols = None
 
 # + tags=["injected-parameters"]
 # Parameters
 target = ["WINNER"]
-pytorch_config = {}
+pytorch_conf = {
+    "model_class": "func.mytorch.NN",
+    "model_conf": {"hidden_nodes": 100, "hidden_layers": 1, "dropout_rate": 0.3},
+    "optimizer_class": "torch.optim.Adam",
+    "optimizer_conf": {"lr": 1e-05, "weight_decay": 0.1, "amsgrad": False},
+    "loss_class": "torch.nn.BCELoss",
+    "loss_conf": {},
+    "batch_size": 30,
+    "epochs": 100000,
+}
+random_seed = 1
 validation_ratio = 0.2
-odds_cols = ["R_ODDS", "B_ODDS"]
-upstream = {"split-train-test": {"train": "/home/m/repo/mma/products/data/train.csv", "test": "/home/m/repo/mma/products/data/test.csv"}}
-product = {"nb": "/home/m/repo/mma/products/reports/fit_pytorch.ipynb", "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict.pt", "model": "/home/m/repo/mma/products/models/pytorch.pt"}
+odds_cols = ""
+upstream = {
+    "split-train-test": {
+        "train": "/home/m/repo/mma/products/data/train.csv",
+        "test": "/home/m/repo/mma/products/data/test.csv",
+    }
+}
+product = {
+    "nb": "/home/m/repo/mma/products/reports/fit_pytorch.ipynb",
+    "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict.pt",
+    "model": "/home/m/repo/mma/products/models/pytorch.pt",
+}
 
 # -
 
@@ -58,26 +73,25 @@ from src.services.paths import *
 import torch.nn as nn
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch.optim.adam
+from sklearn.model_selection import KFold
 
-def train_model(train_dataset, validation_dataset, model, loss_function,
-                batch_size, optimizer_name, lr_rate, epochs, momentum,
-                filename, validation_evaluator, kelly_fraction, print_validations=True):
+from torch.nn import BCELoss
+import func
+from func.mytorch import BettingDataset, NN, get_xyodds
+from src.evaluation.evaluator import BootstrapEvaluator
+
+torch.manual_seed(random_seed)
+
+def pytorch_optimize(model, loss_function, optimizer, train_loader, val_loader, epochs, statedict_filename=None, debug_info=True, **kwargs):
 
     device = torch.device('cpu')
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
-    validation_loader = torch.utils.data.DataLoader(dataset=validation_dataset, batch_size=len(validation_dataset),
-                                              shuffle=False)
-
-    optimizer = get_optimizer(optimizer_name, model, lr_rate, momentum)
 
     top_accuracy = 0
     top_loss = np.inf
-
     val_losses = np.zeros(shape=(epochs,), dtype=float)
     val_accuracies = np.zeros(shape=(epochs,), dtype=float)
 
-    train_losses = np.zeros(shape=(epochs,), dtype=float)
-    train_accuracies = np.zeros(shape=(epochs,), dtype=float)
     for epoch in range(epochs):
         ep_loss = 0
         obs_count = 0
@@ -87,62 +101,52 @@ def train_model(train_dataset, validation_dataset, model, loss_function,
             model = model.to(device)
             optimizer.zero_grad()
             outputs = model(x)
-            if type(loss_function).__name__ == 'MSEDecorrelationLoss' \
-                    or type(loss_function).__name__ == 'ProfitLoss'\
-                    or type(loss_function).__name__ == 'JSDecorrelationLoss'\
-                    or type(loss_function).__name__ == 'KLDecorrelationLoss'\
-                    or type(loss_function).__name__ == 'PearsonDecorrelationLoss'\
-                    or type(loss_function).__name__ == 'BCEDecorrelationLoss':
-                loss = loss_function(outputs, y, odds)
-            else:
-                loss = loss_function(outputs, y)
+            loss = loss_function(outputs, y)
+
+            # if type(loss_function).__name__ == 'MSEDecorrelationLoss' \
+            #         or type(loss_function).__name__ == 'ProfitLoss'\
+            #         or type(loss_function).__name__ == 'JSDecorrelationLoss'\
+            #         or type(loss_function).__name__ == 'KLDecorrelationLoss'\
+            #         or type(loss_function).__name__ == 'PearsonDecorrelationLoss'\
+            #         or type(loss_function).__name__ == 'BCEDecorrelationLoss':
+            #     loss = loss_function(outputs, y, odds)
+            # else:
+            #     loss = loss_function(outputs, y)
             ep_loss += loss.item()
             obs_count += len(y)
             loss.backward()
             optimizer.step()
-
-        # train_losses[epoch] = ep_loss / obs_count
 
         # validation
         model.eval()
         correct = 0
         loss = np.inf
         with torch.no_grad():
-            for x, y, odds in validation_loader:
+            for x, y, odds in val_loader:
                 x, y, odds = x.to(device), y.to(device), odds.to(device)
                 model = model.to(device)
                 output = model(x)
-                if epoch % 1000 == 0:
-                    validation_betting_results = validation_evaluator.run_simulation(output, kelly_fraction)
-                    # median = np.median(validation_betting_results.roi_results)
-                    bootstrap_roi_results = validation_betting_results.roi_results
-                    print('ROI median: ' + str(np.median(bootstrap_roi_results)))
-                    print('Average ROI: ' + str(bootstrap_roi_results.mean()))
-                    print('ROI standard deviation: ' + str(bootstrap_roi_results.std()))
-                    print('Worst-case ROI: ' + str(bootstrap_roi_results.min()))
-                    print('Best-case ROI: ' + str(bootstrap_roi_results.max()))
-                    print('Percentage of profitable simulations: ' + str(
-                        bootstrap_roi_results[bootstrap_roi_results >= 0].size /
-                        bootstrap_roi_results.size * 100) + '%')
+                # if epoch % 1000 == 0:
+                #     validation_betting_results = validation_evaluator.run_simulation(output, kelly_fraction)
+                #     # median = np.median(validation_betting_results.roi_results)
+                #     bootstrap_roi_results = validation_betting_results.roi_results
+                #     print('ROI median: ' + str(np.median(bootstrap_roi_results)))
+                #     print('Average ROI: ' + str(bootstrap_roi_results.mean()))
+                #     print('ROI standard deviation: ' + str(bootstrap_roi_results.std()))
+                #     print('Worst-case ROI: ' + str(bootstrap_roi_results.min()))
+                #     print('Best-case ROI: ' + str(bootstrap_roi_results.max()))
+                #     print('Percentage of profitable simulations: ' + str(
+                #         bootstrap_roi_results[bootstrap_roi_results >= 0].size /
+                #         bootstrap_roi_results.size * 100) + '%')
 
-                if type(loss_function).__name__ == 'MSEDecorrelationLoss'\
-                        or type(loss_function).__name__ == 'ProfitLoss' \
-                        or type(loss_function).__name__ == 'JSDecorrelationLoss' \
-                        or type(loss_function).__name__ == 'KLDecorrelationLoss'\
-                        or type(loss_function).__name__ == 'PearsonDecorrelationLoss'\
-                        or type(loss_function).__name__ == 'BCEDecorrelationLoss':
-                    loss = loss_function(output, y, odds)
-                else:
-                    loss = loss_function(output, y)
+                loss = loss_function(output, y)
                 prediction = torch.round(output)
                 correct += prediction.eq(y).sum().item()
 
-        val_accuracy = correct / len(validation_loader.dataset)
+        val_accuracy = correct / len(val_loader.dataset)
         val_losses[epoch] = loss
         val_accuracies[epoch] = val_accuracy
-        if print_validations:
-            # print('[VAL] Validation accuracy: {:.2f}%'.format(100 * val_accuracy))
-            # print('[VAL] Validation loss: {:.4f}'.format(loss))
+        if debug_info:
             print('[epoch = {}] Validation loss: {:.4f} Validation accuracy: {:.2f}%'.format(epoch + 1, loss, 100 * val_accuracy))
 
         if val_accuracy > top_accuracy:
@@ -150,7 +154,7 @@ def train_model(train_dataset, validation_dataset, model, loss_function,
 
         if loss < top_loss:
             top_loss = loss
-            torch.save(model.state_dict(), filename)
+            torch.save(model.state_dict(), statedict_filename)
 
     #TODO running loss
     return val_losses, val_accuracies
@@ -162,70 +166,43 @@ n = int(train_df.shape[0] * validation_ratio)
 train_df = train_df.iloc[n:]
 val_df = train_df.iloc[0:n]
 
-print(train_df.columns)
-
 x_train, y_train, odds_train = get_xyodds(train_df, odds_cols, target)
 x_val, y_val, odds_val = get_xyodds(val_df, odds_cols, target)
 x_test, y_test, odds_test = get_xyodds(test_df, odds_cols, target)
 
 train_dataset = BettingDataset(x_train, y_train, odds_train)
-validation_dataset = BettingDataset(x_val, y_val, odds_val)
+val_dataset = BettingDataset(x_val, y_val, odds_val)
 test_dataset = BettingDataset(x_test, y_test, odds_test)
 
-# hyper parameters
-batch_size = 80
-epochs = 100
-lr_rate = 0.00008
-decorrelation_ratio = 0.4
-momentum = 0.9
+model_class = eval(pytorch_conf['model_class'])
+pytorch_conf['model_conf']['input_dim'] = train_dataset.x.shape[1]
+model = model_class(**pytorch_conf['model_conf'])
 
-# model choices
-hidden_nodes = 100
-dropout_rate = 0.25
-validation_set_size_ratio = 0.25
-kelly_fraction = 0.05
+pytorch_conf['optimizer_conf']['params'] = model.parameters()
+optim_class = eval(pytorch_conf['optimizer_class'])
+optimizer = optim_class(**pytorch_conf['optimizer_conf'])
 
-dataset = PER_MIN_WEIGHTED_NO_DEBUTS
+loss_class = eval(pytorch_conf['loss_class'])
+loss_function = loss_class(**pytorch_conf['loss_conf'])
 
-
-net_model = OneHiddenLayer(58, hidden_nodes, dropout_rate)
-model = NN(input_dim=58, hidden_nodes=100, hidden_layers=1, dropout_rate=dropout_rate)
-# loss_function = BCEDecorrelationLoss(decorrelation_ratio)
-loss_function = BCELoss()
-optimizer_name = 'SGD'
-# dataset_name = 'basic'
-#
-# # filepath to save model at
-# current_file = os.path.abspath(os.path.dirname(__file__))
-filename = product['model_state_dict']
-#
-# # prepare data
-# df = pd.read_csv(dataset, header=0)
-# train_set, _ = split_train_test(df, test_set_size_ratio)
-validation_evaluator = BootstrapEvaluator(odds=odds_val, results=y_val, sample_size=len(y_val), repetitions=100)
+train_loader = DataLoader(dataset=train_dataset, batch_size=pytorch_conf['batch_size'], shuffle=True)
+val_loader = DataLoader(dataset=val_dataset, batch_size=len(val_dataset), shuffle=False)
 
 
-pytorch_config = {
-    'train_dataset': train_dataset,
-    'validation_dataset': validation_dataset,
+optimize_config = {
     'model': model,
-    'loss_function':loss_function,
-    'batch_size':batch_size,
-    'optimizer_name':optimizer_name,
-    'lr_rate':lr_rate,
-    'epochs':epochs,
-    'momentum':momentum,
-    'filename':filename,
-    'validation_evaluator':validation_evaluator,
-    'kelly_fraction':kelly_fraction,
-    'print_validations': True
+    'loss_function': loss_function,
+    'optimizer': optimizer,
+    'train_loader': train_loader,
+    'val_loader': val_loader,
+    'epochs': pytorch_conf['epochs'],
+    'statedict_filename': product['model_state_dict']
 }
-# train net
-val_losses, val_accuracies = train_model(**pytorch_config)
+val_losses, val_accuracies = pytorch_optimize(**optimize_config)
 
 
 # loss_val = val_losses
-epochs_range = range(1, epochs + 1)
+epochs_range = range(1, pytorch_conf['epochs'] + 1)
 plt.plot(epochs_range, val_losses, 'b', label='validation loss')
 plt.plot(epochs_range, val_accuracies, 'r', label='validation accuracy')
 plt.title('Training and Validation loss')

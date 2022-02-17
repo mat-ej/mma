@@ -1,9 +1,4 @@
-argo:
-  backend: argo-workflows
-  repository: matejcvut/mma
-
-  mounted_volumes:
-    - name: mma
-      spec:
-        hostPath:
-          path: /mnt/mma
+train:
+  backend: kubeflow
+  exclude: [products/data, products/models, products/reports]
+  repository: matejcvut/ploomberkf

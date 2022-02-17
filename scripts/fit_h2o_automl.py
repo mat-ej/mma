@@ -31,10 +31,35 @@ h2oautoml_config = None
 # Parameters
 target = ["WINNER"]
 random_seed = 1
-factors = ["TITLE_BOUT", "BANTAMWEIGHT", "CATCH WEIGHT", "FEATHERWEIGHT", "FLYWEIGHT", "HEAVYWEIGHT", "LIGHT HEAVYWEIGHT", "LIGHTWEIGHT", "MIDDLEWEIGHT", "WELTERWEIGHT", "WOMENS BANTAMWEIGHT", "WOMENS FEATHERWEIGHT", "WOMENS FLYWEIGHT", "WOMENS STRAWEIGHT"]
-h2oautoml_config = {"max_models": 5, "verbosity": "warn", "preprocessing": ["target_encoding"], "include_algos": ["GLM"]}
+factors = [
+    "TITLE_BOUT",
+    "BANTAMWEIGHT",
+    "CATCH WEIGHT",
+    "FEATHERWEIGHT",
+    "FLYWEIGHT",
+    "HEAVYWEIGHT",
+    "LIGHT HEAVYWEIGHT",
+    "LIGHTWEIGHT",
+    "MIDDLEWEIGHT",
+    "WELTERWEIGHT",
+    "WOMENS BANTAMWEIGHT",
+    "WOMENS FEATHERWEIGHT",
+    "WOMENS FLYWEIGHT",
+    "WOMENS STRAWEIGHT",
+]
+h2oautoml_config = {
+    "max_models": 5,
+    "verbosity": "warn",
+    "preprocessing": ["target_encoding"],
+    "include_algos": ["GLM"],
+}
 models_path = "/home/m/repo/mma/products/models/h2o"
-upstream = {"split-train-test": {"train": "/home/m/repo/mma/products/data/train.csv", "test": "/home/m/repo/mma/products/data/test.csv"}}
+upstream = {
+    "split-train-test": {
+        "train": "/home/m/repo/mma/products/data/train.csv",
+        "test": "/home/m/repo/mma/products/data/test.csv",
+    }
+}
 product = {"nb": "/home/m/repo/mma/products/reports/fit_h2o_automl.ipynb"}
 
 # -

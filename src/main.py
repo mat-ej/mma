@@ -47,7 +47,7 @@ test_results = get_results(test_set)
 
 # train net
 cur_framework = Framework(train_set, validation_set_size_ratio, net_model, loss_function, database)
-cur_framework.train_model(batch_size, optimizer, lr_rate, epochs)
+cur_framework.pytorch_optimize(batch_size, optimizer, lr_rate, epochs)
 
 # evaluate on out-of-sample test data
 result_probabilities, predictive_accuracy = cur_framework.predict(test_set)
