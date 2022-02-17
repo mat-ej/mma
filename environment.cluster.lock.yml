@@ -301,4 +301,5 @@ dependencies:
     - webencodings==0.5.1
     - widgetsnbextension==3.5.2
     - wrapt==1.13.3
+prefix: /home/uhrinmat/anaconda/mma
 
