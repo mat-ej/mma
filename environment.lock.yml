@@ -24,9 +24,10 @@ dependencies:
   - torchvision
   - tqdm
   - beautifulsoup4
+  - optuna
   - pip:
       - pipelineprofiler
-#      - ray[tune] optuna
+      - ray
 #    - http://h2o-release.s3.amazonaws.com/h2o/latest_stable_Py.html
     # if using S3...
     # - boto3
