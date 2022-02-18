@@ -1,0 +1,17 @@
+name: ray
+prefix: /home/uhrinmat/anaconda/ray
+
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.8
+  - pip
+  - pandas
+  - pytorch
+  - numpy
+  - torchvision
+  - optuna
+  - pip:
+      - ray
+
