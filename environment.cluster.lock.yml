@@ -7,7 +7,7 @@ channels:
   - pytorch
 dependencies:
   - python=3.8
-  - auto-sklearn
+  #- auto-sklearn
   - pip
   - matplotlib
   - jupyterlab
