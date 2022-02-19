@@ -1,6 +1,6 @@
 # slurm-launch.py
 # Usage:
-# python slurm-launch.py --exp-name test --command "python optuna-test.py" --num-nodes 2
+# python slurm-launch.py --exp-name test --command "python ray_tune.py" --num-nodes 4
 # python slurm-launch.py --exp-name test --command "python " --num-nodes 3
 
 import argparse

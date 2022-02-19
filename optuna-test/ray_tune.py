@@ -38,7 +38,7 @@ analysis = tune.run(
    metric="mean_accuracy",
    mode="max",
    search_alg=OptunaSearch(),
-   num_samples=10)
+   num_samples=1000)
 
 taken = time.time() - start
 print(f"Time taken: {taken:.2f} seconds.")
