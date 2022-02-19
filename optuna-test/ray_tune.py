@@ -1,5 +1,7 @@
 import torch
 import torch.optim as optim
+import ray
+import os
 from ray.tune.examples.mnist_pytorch import get_data_loaders, ConvNet, train, test
 from ray import tune
 from ray.tune.suggest.optuna import OptunaSearch
@@ -22,6 +24,11 @@ def train_mnist(config):
 
 import time
 start = time.time()
+
+# ip_head and redis_passwords are set by ray cluster shell scripts
+print(os.environ["ip_head"], os.environ["redis_password"])
+
+ray.init(address="auto", _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
 analysis = tune.run(
    train_mnist,
    config={
@@ -32,6 +39,7 @@ analysis = tune.run(
    mode="max",
    search_alg=OptunaSearch(),
    num_samples=10)
+
 taken = time.time() - start
 print(f"Time taken: {taken:.2f} seconds.")
 print(f"Best config: {analysis.best_config}")

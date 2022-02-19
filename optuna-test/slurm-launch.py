@@ -1,6 +1,7 @@
 # slurm-launch.py
 # Usage:
-# python slurm-launch.py --exp-name test --command "rllib train --run PPO --env CartPole-v0"
+# python slurm-launch.py --exp-name test --command "python optuna-test.py" --num-nodes 2
+# python slurm-launch.py --exp-name test --command "python " --num-nodes 3
 
 import argparse
 import subprocess
