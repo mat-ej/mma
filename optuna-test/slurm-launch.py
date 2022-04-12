@@ -1,5 +1,6 @@
 # slurm-launch.py
 # Usage:
+# python slurm-launch.py --exp-name test1 --command "python ray_tune.py" --num-nodes 5 --partition cpufast
 # python slurm-launch.py --exp-name test --command "python ray_tune.py" --num-nodes 4
 # python slurm-launch.py --exp-name test --command "python " --num-nodes 3
 

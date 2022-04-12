@@ -26,7 +26,7 @@ import time
 start = time.time()
 
 # ip_head and redis_passwords are set by ray cluster shell scripts
-print(os.environ["ip_head"], os.environ["redis_password"])
+# print(os.environ["ip_head"], os.environ["redis_password"])
 
 ray.init(address="auto", _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
 analysis = tune.run(
@@ -37,8 +37,7 @@ analysis = tune.run(
    },
    metric="mean_accuracy",
    mode="max",
-   search_alg=OptunaSearch(),
-   num_samples=1000)
+   search_alg=OptunaSearch())
 
 taken = time.time() - start
 print(f"Time taken: {taken:.2f} seconds.")

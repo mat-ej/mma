@@ -17,6 +17,20 @@ def get_xyodds(df, odds_cols, target):
 
     return x, y, odds
 
+def get_xyodds_alt(df, odds_cols, target):
+    x = df.drop(columns=target).astype(np.float32).values
+    y = df[target].astype(np.float32).values
+    scaler = StandardScaler()
+    x = scaler.fit_transform(x)
+
+    if not odds_cols or odds_cols[0] not in df.columns:
+        odds = np.zeros_like(y)
+    else:
+        odds = df[odds_cols].astype(np.float32).values
+
+    return x, y, odds
+
+
 
 class BettingDataset(Dataset):
     def __init__(self, x, y, odds):
@@ -33,7 +47,7 @@ class BettingDataset(Dataset):
         return self.x.shape[1]
 
 class NN(torch.nn.Module):
-    def __init__(self, input_dim, hidden_nodes, hidden_layers, dropout_rate):
+    def __init__(self, input_dim, output_dim, hidden_nodes, hidden_layers, dropout_rate):
         super(NN, self).__init__()
 
         self.n_hidden_layers = hidden_layers
@@ -49,12 +63,13 @@ class NN(torch.nn.Module):
                 self.hidden_layers.append(nn.Linear(hidden_nodes, hidden_nodes))
                 nn.init.xavier_normal_(self.hidden_layers[-1].weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
 
-            self.hidden_layers.append(nn.Linear(hidden_nodes, 1))
+            self.hidden_layers.append(nn.Linear(hidden_nodes, output_dim))
             nn.init.xavier_normal_(self.hidden_layers[-1].weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
 
 
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim = 1)
         self.dropout = nn.Dropout(p=dropout_rate)
         self.tanh = nn.Tanh()
         self.leaky = nn.LeakyReLU(0.2)
@@ -76,6 +91,9 @@ class NN(torch.nn.Module):
                 x = self.dropout(x)
                 #x = self.relu(x)
 
-            x = self.sigmoid(x)
+            if x.shape[1] == 1:
+                x_out = self.sigmoid(x)
+            else:
+                x_out = self.softmax(x)
 
-        return x
+        return x_out

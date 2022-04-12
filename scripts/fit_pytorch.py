@@ -44,11 +44,11 @@ pytorch_conf = {
     "model_class": "func.mytorch.NN",
     "model_conf": {"hidden_nodes": 100, "hidden_layers": 1, "dropout_rate": 0.3},
     "optimizer_class": "torch.optim.Adam",
-    "optimizer_conf": {"lr": 1e-05, "weight_decay": 0.1, "amsgrad": False},
-    "loss_class": "torch.nn.BCELoss",
+    "optimizer_conf": {"lr": 1e-05, "weight_decay": 0.01, "amsgrad": False},
+    "loss_class": "torch.nn.CrossEntropyLoss",
     "loss_conf": {},
     "batch_size": 30,
-    "epochs": 100000,
+    "epochs": 100,
 }
 random_seed = 1
 validation_ratio = 0.2
@@ -162,6 +162,8 @@ def pytorch_optimize(model, loss_function, optimizer, train_loader, val_loader, 
 
 train_df = pd.read_csv(upstream['split-train-test']['train'])
 test_df = pd.read_csv(upstream['split-train-test']['test'])
+
+
 n = int(train_df.shape[0] * validation_ratio)
 train_df = train_df.iloc[n:]
 val_df = train_df.iloc[0:n]
@@ -176,6 +178,7 @@ test_dataset = BettingDataset(x_test, y_test, odds_test)
 
 model_class = eval(pytorch_conf['model_class'])
 pytorch_conf['model_conf']['input_dim'] = train_dataset.x.shape[1]
+pytorch_conf['model_conf']['output_dim'] = train_dataset.y.shape[1]
 model = model_class(**pytorch_conf['model_conf'])
 
 pytorch_conf['optimizer_conf']['params'] = model.parameters()

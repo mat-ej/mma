@@ -42,3 +42,9 @@ def split_train_test_op(upstream, product, test_ratio):
     train_set, test_set = split_train_test(dataframe, test_ratio)
     train_set.to_csv(product['train'], index = False)
     test_set.to_csv(product['test'], index = False)
+
+def split_train_test_op_alt(upstream, product, test_ratio):
+    dataframe = pd.read_csv(upstream['features-alt']['data'])
+    train_set, test_set = split_train_test(dataframe, test_ratio)
+    train_set.to_csv(product['train'], index = False)
+    test_set.to_csv(product['test'], index = False)

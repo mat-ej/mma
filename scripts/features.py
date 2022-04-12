@@ -25,20 +25,6 @@ features = None
 # + tags=["injected-parameters"]
 # Parameters
 features = [
-    "TITLE_BOUT",
-    "BANTAMWEIGHT",
-    "CATCH WEIGHT",
-    "FEATHERWEIGHT",
-    "FLYWEIGHT",
-    "HEAVYWEIGHT",
-    "LIGHT HEAVYWEIGHT",
-    "LIGHTWEIGHT",
-    "MIDDLEWEIGHT",
-    "WELTERWEIGHT",
-    "WOMENS BANTAMWEIGHT",
-    "WOMENS FEATHERWEIGHT",
-    "WOMENS FLYWEIGHT",
-    "WOMENS STRAWEIGHT",
     "R_AGE",
     "R_HEIGHT",
     "R_REACH",
@@ -140,11 +126,11 @@ features = [
     "B_OPP_GROUND",
     "B_OPP_GROUND_ATT",
 ]
-target = ["WINNER"]
+target = ["R_DEC", "R_KO", "R_SUB", "B_DEC", "B_KO", "B_SUB"]
 upstream = {"data-transform": "/home/m/repo/mma/products/data/data.csv"}
 product = {
-    "data": "/home/m/repo/mma/products/data/features.csv",
-    "nb": "/home/m/repo/mma/products/reports/features.ipynb",
+    "data": "/home/m/repo/mma/products/data/features_alt.csv",
+    "nb": "/home/m/repo/mma/products/reports/features_alt.ipynb",
 }
 
 # -

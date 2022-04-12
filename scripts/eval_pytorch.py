@@ -41,29 +41,29 @@ kelly_fraction = None
 target = ["WINNER"]
 pytorch_conf = {
     "model_class": "func.mytorch.NN",
-    "model_conf": {"hidden_nodes": 50, "hidden_layers": 1, "dropout_rate": 0.3},
+    "model_conf": {"hidden_nodes": 100, "hidden_layers": 1, "dropout_rate": 0.3},
     "optimizer_class": "torch.optim.Adam",
     "optimizer_conf": {"lr": 1e-05, "weight_decay": 0.01, "amsgrad": False},
-    "loss_class": "torch.nn.BCELoss",
+    "loss_class": "torch.nn.CrossEntropyLoss",
     "loss_conf": {},
     "batch_size": 30,
-    "epochs": 100000,
+    "epochs": 100,
 }
 odds_cols = ["R_ODDS", "B_ODDS"]
 bootstrap_repetitions = 3
 kelly_fraction = 0.05
 upstream = {
-    "split-train-test": {
-        "train": "/home/m/repo/mma/products/data/train.csv",
-        "test": "/home/m/repo/mma/products/data/test.csv",
+    "split-train-test-alt": {
+        "train": "/home/m/repo/mma/products/data/train_alt.csv",
+        "test": "/home/m/repo/mma/products/data/test_alt.csv",
     },
-    "fit-pytorch": {
-        "nb": "/home/m/repo/mma/products/reports/fit_pytorch.ipynb",
-        "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict.pt",
-        "model": "/home/m/repo/mma/products/models/pytorch.pt",
+    "fit-pytorch-alt": {
+        "nb": "/home/m/repo/mma/products/reports/fit_pytorch_alt.ipynb",
+        "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict_alt.pt",
+        "model": "/home/m/repo/mma/products/models/pytorch_alt.pt",
     },
 }
-product = {"nb": "/home/m/repo/mma/products/reports/eval_pytorch.ipynb"}
+product = {"nb": "/home/m/repo/mma/products/reports/eval_pytorch_alt.ipynb"}
 
 # -
 

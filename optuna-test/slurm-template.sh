@@ -12,8 +12,8 @@ ${GIVEN_NODE}
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
 
-###SBATCH --cpus-per-task=5
-###SBATCH --mem-per-cpu=1GB
+#SBATCH --cpus-per-task=20
+#SBATCH --mem-per-cpu=1GB
 
 # Load modules or your own conda environment here
 # module load pytorch/v1.4.0-gpu
