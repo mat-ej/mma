@@ -53,20 +53,20 @@ odds_cols = ["R_ODDS", "B_ODDS"]
 bootstrap_repetitions = 3
 kelly_fraction = 0.05
 upstream = {
-    "split-train-test-alt": {
-        "train": "/home/m/repo/mma/products/data/train_alt.csv",
-        "test": "/home/m/repo/mma/products/data/test_alt.csv",
+    "split-train-test": {
+        "train": "/home/m/repo/mma/products/data/train.csv",
+        "test": "/home/m/repo/mma/products/data/test.csv",
     },
-    "fit-pytorch-alt": {
-        "nb": "/home/m/repo/mma/products/reports/fit_pytorch_alt.ipynb",
-        "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict_alt.pt",
-        "model": "/home/m/repo/mma/products/models/pytorch_alt.pt",
+    "fit-pytorch": {
+        "nb": "/home/m/repo/mma/products/reports/fit_pytorch.ipynb",
+        "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict.pt",
+        "model": "/home/m/repo/mma/products/models/pytorch.pt",
     },
 }
-product = {"nb": "/home/m/repo/mma/products/reports/eval_pytorch_alt.ipynb"}
-
+product = {"nb": "/home/m/repo/mma/products/reports/eval_pytorch.ipynb"}
 # -
 
+# +
 # D(P||Q) KL divergence, relative entropy of P, Q
 def kl(P, Q):
     return (P * np.log(P / Q)).sum()
@@ -99,6 +99,8 @@ y_hat = np.round(test_probs).astype(int)
 acc_model = (y_hat == y_test).sum() / len(y_test)
 
 print(acc_model)
+
+# -
 # y_book_hat = (odds_test[:,0] < odds_test[:,1]).astype(int).reshape(-1,1)
 # acc_book = (y_book_hat == y_test).sum() / len(y_test)
 #
