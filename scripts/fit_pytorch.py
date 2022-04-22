@@ -64,9 +64,11 @@ product = {
     "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict.pt",
     "model": "/home/m/repo/mma/products/models/pytorch.pt",
 }
-
 # -
 
+# +
+
+# %%
 from src.pytorch.pytorch_framework import *
 from src.services.functions import *
 from src.services.paths import *
@@ -103,7 +105,7 @@ def pytorch_optimize(model, loss_function, optimizer, train_loader, val_loader, 
             outputs = model(x)
             loss = loss_function(outputs, y)
 
-            # if type(loss_function).__name__ == 'MSEDecorrelationLoss' \
+            # if type(loss_function).__name__ == 'MSEDecorrelationLoss'\
             #         or type(loss_function).__name__ == 'ProfitLoss'\
             #         or type(loss_function).__name__ == 'JSDecorrelationLoss'\
             #         or type(loss_function).__name__ == 'KLDecorrelationLoss'\
@@ -158,7 +160,7 @@ def pytorch_optimize(model, loss_function, optimizer, train_loader, val_loader, 
 
     #TODO running loss
     return val_losses, val_accuracies
-
+# %%
 
 train_df = pd.read_csv(upstream['split-train-test']['train'])
 test_df = pd.read_csv(upstream['split-train-test']['test'])
@@ -218,6 +220,7 @@ model.load_state_dict(torch.load(product['model_state_dict']))
 model.eval()
 
 torch.save(model, product['model'])
+# -
 
 # test_loader = DataLoader(dataset=test_dataset, batch_size=len(test_dataset))
 #
@@ -261,21 +264,3 @@ torch.save(model, product['model'])
 # print(market_accuracy)
 # np.sum(market_predictions == test_results) / len(test_results)
 # print(seq_results.roi_results)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# loss_function = MSEDecorrelationLoss(decorrelation_ratio)
-# loss_function = JSDecorrelationLoss(decorrelation_ratio)
-# loss_function = KLDecorrelationLoss(decorrelation_ratio)

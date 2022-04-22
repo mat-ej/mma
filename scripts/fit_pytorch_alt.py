@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     cell_metadata_filter: all
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -12,31 +13,13 @@
 #     name: python3
 # ---
 
-# %%
-# Add description here
-#
-# *Note:* You can open this file as a notebook (JupyterLab: right-click on it in the side bar -> Open With -> Notebook)
-
-
-# %%
-# Uncomment the next two lines to enable auto reloading for imported modules
-# # %load_ext autoreload
-# # %autoreload 2
-# For more info, see:
-# https://docs.ploomber.io/en/latest/user-guide/faq_index.html#auto-reloading-code-in-jupyter
-
 # %% tags=["parameters"]
-# If this task has dependencies, declare them in the YAML spec and leave this
-# as None
 
+# %%
+# + tags=["parameters"]
 upstream = None
-
-# This is a placeholder, leave it as None
 product = None
 
-
-# %% tags=["injected-parameters"]
-# Parameters
 target = ["R_DEC", "R_KO", "R_SUB", "B_DEC", "B_KO", "B_SUB"]
 pytorch_conf = {
     "model_class": "func.mytorch.NN",
@@ -62,7 +45,9 @@ product = {
     "model_state_dict": "/home/m/repo/mma/products/models/pytorch_state_dict_alt.pt",
     "model": "/home/m/repo/mma/products/models/pytorch_alt.pt",
 }
+# -
 
+# +
 from src.pytorch.pytorch_framework import *
 from src.services.functions import *
 from src.services.paths import *
@@ -214,7 +199,4 @@ model.load_state_dict(torch.load(product['model_state_dict']))
 model.eval()
 
 torch.save(model, product['model'])
-
-
-# %%
-# your code here...
+# -
