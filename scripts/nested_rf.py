@@ -1,4 +1,6 @@
 # + tags=["parameters"]
+
+
 upstream = None
 product = None
 target = None
@@ -34,6 +36,7 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
 
 # %%
 train_df = pd.read_csv(upstream['split-train-test']['train'])
@@ -42,39 +45,52 @@ test_df = pd.read_csv(upstream['split-train-test']['test'])
 # %%
 ## Should only include fundamental vars
 y = train_df[target]
-X_all = train_df.drop(columns = target)
-X = X_all.drop(columns = odds_cols)
-print(X.columns)
+X_fund = train_df.drop(columns = target)
 
+# %%
+if odds_cols in train_df.columns.tolist():
+    X_fund = train_df.drop(columns=odds_cols)
+
+
+# X = X_all.drop(columns = odds_cols)
+print(X_fund.columns)
+
+
+# %%
 # n = int(train_df.shape[0] * validation_ratio)
 # train_df = train_df.iloc[n:]
 # val_df = train_df.iloc[0:n]
-print(X.head())
+print(X_fund.head())
 print(y.head())
 
-X = X.values
+X = X_fund.values
 y = y.values.ravel()
 
 # %%
-cv_outer = KFold(n_splits=3, shuffle=True, random_state=random_seed)
-# enumerate splits
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-cv_inner = KFold(n_splits=2, shuffle=True, random_state=1)
-# define the model
-model = RandomForestClassifier(random_state=1)
-# define search space
+# %%
+model = RandomForestClassifier(random_state=random_seed)
 space = dict()
-space['n_estimators'] = [10, 100, 500, 1000]
-space['max_features'] = [2, 4, 6, 10, 20, 30, 40, 50, 56]
+space['n_estimators'] = [50, 100, 500, 1000, 10000]
+space['max_features'] = list(range(10, len(X_fund.columns) + 1, 10))
+
+# %%
+# nested CV
+cv_outer = KFold(n_splits=5, shuffle=True, random_state=random_seed)
+cv_inner = KFold(n_splits=2, shuffle=True, random_state=random_seed)
+
 # define search
 search = GridSearchCV(model, space, scoring='accuracy', n_jobs=1, cv=cv_inner, refit=True)
-# configure the cross-validation procedure
-cv_outer = KFold(n_splits=5, shuffle=True, random_state=1)
 # execute the nested cross-validation
 scores = cross_val_score(search, X, y, scoring='accuracy', cv=cv_outer, n_jobs=-1)
 # report performance
+print(scores)
 print('Accuracy: %.3f (%.3f)' % (mean(scores), std(scores)))
 
+# %%
+print(search.best_estimator_)
 # outer_results = list()
 # for train_ix, test_ix in cv_outer.split(X):
 # 	# split data

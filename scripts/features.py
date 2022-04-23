@@ -126,11 +126,11 @@ features = [
     "B_OPP_GROUND",
     "B_OPP_GROUND_ATT",
 ]
-target = ["R_DEC", "R_KO", "R_SUB", "B_DEC", "B_KO", "B_SUB"]
+target = ["WINNER"]
 upstream = {"data-transform": "/home/m/repo/mma/products/data/data.csv"}
 product = {
-    "data": "/home/m/repo/mma/products/data/features_alt.csv",
-    "nb": "/home/m/repo/mma/products/reports/features_alt.ipynb",
+    "data": "/home/m/repo/mma/products/data/features.csv",
+    "nb": "/home/m/repo/mma/products/reports/features.ipynb",
 }
 
 # -
