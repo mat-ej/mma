@@ -66,11 +66,13 @@ from pprint import pprint
 import PipelineProfiler
 from sklearn.pipeline import Pipeline
 import autosklearn
+from sklearn.decomposition import FastICA
 
 from autosklearn.pipeline.components.feature_preprocessing import FeaturePreprocessorChoice
 from autosklearn.pipeline.components.data_preprocessing import DataPreprocessorChoice
 from autosklearn.pipeline.components.feature_preprocessing.extra_trees_preproc_for_classification import ExtraTreesPreprocessorClassification
 from autosklearn.pipeline.components.data_preprocessing.balancing.balancing import Balancing
+from sklearn.neural_network import MLPClassifier
 
 
 # %%
@@ -155,6 +157,9 @@ clf3 = DecisionTreeClassifier(random_state=1)
 clf4 = SVC(random_state=1)
 clf5 = RandomForestClassifier(random_state=1)
 clf6 = ExtraTreesClassifier(random_state=1)
+clf7 = MLPClassifier(max_iter=3000,random_state=1)
+
+clf8 = MLPClassifier(max_iter=3000,random_state=1)
 
 # Building the pipelines
 pipe1 = Pipeline([('std', StandardScaler()),
@@ -172,6 +177,13 @@ pipe5 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting'))
 pipe6 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
                   ('clf6', clf6)])
 
+pipe7 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
+                  ('preprocessing', FastICA(algorithm="parallel", fun = "exp", whiten = False)),
+                  ('clf7', clf7)])
+
+pipe8 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
+                  ('std', StandardScaler()),
+                  ('clf8', clf8)])
 
 # Setting up the parameter grids
 param_grid1 = [{'clf1__penalty': ['l2'],
@@ -197,18 +209,45 @@ param_grid6 = [{'clf6__n_estimators': [100, 500, 1000, 10000],
                 # 'clf6__min_samples_leaf': param_range,
                 # 'clf6__max_depth': param_range,
                 # 'clf6__min_samples_split': param_range[1:]
-                }
-               ]
+                }]
+
+param_grid7 = [{
+        'clf7__hidden_layer_sizes': [(30,), (60,), (100,), (100, 50), (100, 100), (50,100,50)],
+        'clf7__activation': ['tanh', 'relu'],
+        'clf7__solver': ['sgd', 'adam'],
+        'clf7__alpha': [0.0001, 0.05, 0.00047],
+        'clf7__batch_size': ['auto'],
+        'clf7__early_stopping': ['valid'],
+        'clf7__learning_rate': ['adaptive'],
+        }]
+
+param_grid8 = [{
+        'clf8__hidden_layer_sizes': [(30,), (68,), (100,), (100, 50), (100, 100), (50,100,50)],
+        'clf8__activation': ['tanh', 'relu'],
+        'clf8__solver': ['sgd', 'adam'],
+        'clf8__alpha': [0.0001, 0.05, 0.00047],
+        'clf8__batch_size': ['auto'],
+        'clf8__early_stopping': ['valid'],
+        'clf8__learning_rate': ['adaptive'],
+        }]
 
 # %%
 # Setting up multiple GridSearchCV objects, 1 for each algorithm
 gridcvs = {}
 inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
 
-# for pgrid, est, name in zip((param_grid1, param_grid2, param_grid3,
-#                              param_grid4, param_grid5, param_grid6),
-#                             (pipe1, pipe2, clf3, pipe4, clf5, pipe6),
-#                             ('Softmax', 'KNN', 'DTree', 'SVM', 'RForest', 'ExtraTrees')):
+gcv = GridSearchCV(estimator=pipe7,
+                   param_grid=param_grid7,
+                   scoring='accuracy',
+                   n_jobs=-1,
+                   cv=inner_cv,
+                   verbose=0,
+                   refit=True)
+gridcvs['MLP_ICA'] = gcv
+
+# for pgrid, est, name in zip((param_grid7),
+#                             (pipe7),
+#                             ('MLP_ICA')):
 #     gcv = GridSearchCV(estimator=est,
 #                        param_grid=pgrid,
 #                        scoring='accuracy',
@@ -217,19 +256,6 @@ inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
 #                        verbose=0,
 #                        refit=True)
 #     gridcvs[name] = gcv
-#
-
-for pgrid, est, name in zip((param_grid5, param_grid6),
-                            (pipe5, pipe6),
-                            ('RForest', 'ExtraTrees')):
-    gcv = GridSearchCV(estimator=est,
-                       param_grid=pgrid,
-                       scoring='accuracy',
-                       n_jobs=-1,
-                       cv=inner_cv,
-                       verbose=0,
-                       refit=True)
-    gridcvs[name] = gcv
 
 # %%
 outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
@@ -240,7 +266,7 @@ for name, gs_est in sorted(gridcvs.items()):
                                  y=y_train,
                                  cv=outer_cv,
                                  return_estimator=True,
-                                 n_jobs=7)
+                                 n_jobs=8)
 
     print(50 * '-', '\n')
     print('Algorithm:', name)
@@ -259,7 +285,7 @@ for name, gs_est in sorted(gridcvs.items()):
 gcv_model_select = GridSearchCV(estimator=pipe5,
                                 param_grid=param_grid5,
                                 scoring='accuracy',
-                                n_jobs=-1,
+                                n_jobs=8,
                                 cv=inner_cv,
                                 verbose=1,
                                 refit=True)
