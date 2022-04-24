@@ -73,14 +73,35 @@ from autosklearn.pipeline.components.data_preprocessing import DataPreprocessorC
 from autosklearn.pipeline.components.feature_preprocessing.extra_trees_preproc_for_classification import ExtraTreesPreprocessorClassification
 from autosklearn.pipeline.components.data_preprocessing.balancing.balancing import Balancing
 from sklearn.neural_network import MLPClassifier
-
+import sklearn
 
 # %%
 df = pd.read_csv(upstream['features']['data'])
+market = df[odds_cols]
+odds = market[['R_ODDS', 'B_ODDS']].values
+market_probs = sklearn.preprocessing.normalize(1 / odds, norm="l1")
+market['p_red'] = market_probs[:,0]
+market['p_blue'] = market_probs[:,1]
+market['y_hat'] = (market.p_red >= market.p_blue).astype(int)
 
 y = df[target]
+market['y_true'] = y
+
+# D(P||Q) KL divergence, relative entropy of P, Q
+def kl(P, Q):
+    return (P * np.log(P / Q)).sum()
+
+def st_kl(R, Q):
+    return (R[R>0] * np.log(R[R>0] / Q[R>0])).sum()
+
+
+
+
 X_fund = df.drop(columns = target)
 if odds_cols in df.columns.tolist():
+    X_fund = df.drop(columns=odds_cols)
+
+if any(item in df.columns.tolist() for item in odds_cols):
     X_fund = df.drop(columns=odds_cols)
 
 print(X_fund.columns)
@@ -92,17 +113,55 @@ X = X_fund.values
 y = y.values.ravel()
 
 # %%
+
+market_acc = []
+market_kl = []
+market_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
+for train_index, test_index in market_cv.split(X, y):
+    fold = market.iloc[test_index, :]
+    fold_acc = (fold.y_true == fold.y_hat).sum() / len(fold)
+
+    y_true = fold.y_true.values
+    p_true = np.column_stack([y_true, 1 - y_true])
+    p_market = fold[['p_red', 'p_blue']].values
+
+    fold_kl = st_kl(p_true, p_market) / len(fold)
+    market_acc.append(fold_acc)
+    market_kl.append(fold_kl)
+
+
+
+
+
+market_acc = np.array(market_acc)
+market_kl = np.array(market_kl)
+print('\n%s | outer ACC %.2f%% +/- %.2f' %
+      ("market", market_acc.mean() * 100,
+       market_acc.std() * 100))
+
+print('\n%s | outer KL %.2f +/- %.2f' %
+      ("market", market_kl.mean(),
+       market_kl.std()))
+
+# %%
 automl_sklearn = pickle.load(open('/home/m/repo/mma/backup/sklearn-automl_no_odds.pickle', 'rb'))
 # print(automl_sklearn)
 # print(test_df)
-print("Statistics")
-print(automl_sklearn.sprint_statistics())
+# print("Statistics")
+# print(automl_sklearn.sprint_statistics())
 # print(automl.show_models())
-pprint(automl_sklearn.show_models(), indent=4)
+# pprint(automl_sklearn.show_models(), indent=4)
 # df_cv_results = pd.DataFrame(automl_sklearn).sort_values(by = 'mean_test_score', ascending = False)
 # print(df_cv_results)
 # %%
 leaderboard = automl_sklearn.leaderboard(detailed = True, ensemble_only=False)
+with pd.option_context('display.max_rows', None,
+                       'display.max_columns', None,
+                       'display.precision', 3,
+                       ):
+    print(leaderboard[0:5][['rank', 'type', 'balancing_strategy', 'feature_preprocessors']])
+
+
 automl_models = automl_sklearn.get_models_with_weights()
 best_model = automl_models[0][1]
 
@@ -157,9 +216,9 @@ clf3 = DecisionTreeClassifier(random_state=1)
 clf4 = SVC(random_state=1)
 clf5 = RandomForestClassifier(random_state=1)
 clf6 = ExtraTreesClassifier(random_state=1)
-clf7 = MLPClassifier(max_iter=3000,random_state=1)
+clf7 = MLPClassifier(max_iter=10000,random_state=1)
 
-clf8 = MLPClassifier(max_iter=3000,random_state=1)
+clf8 = MLPClassifier(max_iter=10000,random_state=1)
 
 # Building the pipelines
 pipe1 = Pipeline([('std', StandardScaler()),
@@ -178,7 +237,8 @@ pipe6 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting'))
                   ('clf6', clf6)])
 
 pipe7 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
-                  ('preprocessing', FastICA(algorithm="parallel", fun = "exp", whiten = False)),
+                  # ('std', StandardScaler()),
+                  ('ica', FastICA(algorithm="parallel", fun = "exp", whiten = True, max_iter=2500)),
                   ('clf7', clf7)])
 
 pipe8 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
@@ -201,33 +261,33 @@ param_grid4 = [{'clf4__kernel': ['rbf'],
                {'clf4__kernel': ['linear'],
                 'clf4__C': np.power(10., np.arange(-4, 4))}]
 
-param_grid5 = [{'clf5__n_estimators': [100, 500, 1000, 10000]}]
+param_grid5 = [{'clf5__n_estimators': [100, 500, 1000, 5000]}]
 
 param_range = list(range(0, 20))
-param_grid6 = [{'clf6__n_estimators': [100, 500, 1000, 10000],
+param_grid6 = [{'clf6__n_estimators': [100, 500, 1000, 5000],
                 'clf6__criterion': ['gini', 'entropy'],
                 # 'clf6__min_samples_leaf': param_range,
                 # 'clf6__max_depth': param_range,
                 # 'clf6__min_samples_split': param_range[1:]
                 }]
 
-param_grid7 = [{
-        'clf7__hidden_layer_sizes': [(30,), (60,), (100,), (100, 50), (100, 100), (50,100,50)],
-        'clf7__activation': ['tanh', 'relu'],
-        'clf7__solver': ['sgd', 'adam'],
-        'clf7__alpha': [0.0001, 0.05, 0.00047],
-        'clf7__batch_size': ['auto'],
-        'clf7__early_stopping': ['valid'],
-        'clf7__learning_rate': ['adaptive'],
-        }]
+# param_grid8 = [{
+#         'clf8__hidden_layer_sizes': [(30,), (68,), (100,), (1000,), (200,), (100, 50), (100, 100),(1000, 2), (1000, 10), (50,100,50)],
+#         'clf8__activation': ['tanh', 'relu'],
+#         'clf8__solver': ['sgd', 'adam'],
+#         'clf8__alpha': [0.0001, 0.05, 0.00047],
+#         'clf8__batch_size': ['auto'],
+#         'clf8__early_stopping': [True],
+#         'clf8__learning_rate': ['adaptive'],
+#         }]
 
 param_grid8 = [{
-        'clf8__hidden_layer_sizes': [(30,), (68,), (100,), (100, 50), (100, 100), (50,100,50)],
+        'clf8__hidden_layer_sizes': [(256,), (500,), (1000,), (10000,), (500,2), (500, 10), (256,2), (256,10), (1000, 2), (1000, 10), (1000, 100), (10000, 2), (256,256), (500,500), (1000,1000)],
         'clf8__activation': ['tanh', 'relu'],
         'clf8__solver': ['sgd', 'adam'],
         'clf8__alpha': [0.0001, 0.05, 0.00047],
         'clf8__batch_size': ['auto'],
-        'clf8__early_stopping': ['valid'],
+        'clf8__early_stopping': [True],
         'clf8__learning_rate': ['adaptive'],
         }]
 
@@ -236,18 +296,18 @@ param_grid8 = [{
 gridcvs = {}
 inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
 
-gcv = GridSearchCV(estimator=pipe7,
-                   param_grid=param_grid7,
+gcv = GridSearchCV(estimator=pipe8,
+                   param_grid=param_grid8,
                    scoring='accuracy',
                    n_jobs=-1,
                    cv=inner_cv,
                    verbose=0,
                    refit=True)
-gridcvs['MLP_ICA'] = gcv
+gridcvs['MLP_STD'] = gcv
 
-# for pgrid, est, name in zip((param_grid7),
-#                             (pipe7),
-#                             ('MLP_ICA')):
+# for pgrid, est, name in zip((param_grid6, param_grid8),
+#                             (pipe6, pipe8),
+#                             ('ExtraTrees', 'MLP_STD')):
 #     gcv = GridSearchCV(estimator=est,
 #                        param_grid=pgrid,
 #                        scoring='accuracy',
@@ -266,7 +326,7 @@ for name, gs_est in sorted(gridcvs.items()):
                                  y=y_train,
                                  cv=outer_cv,
                                  return_estimator=True,
-                                 n_jobs=8)
+                                 n_jobs=6)
 
     print(50 * '-', '\n')
     print('Algorithm:', name)
@@ -303,12 +363,12 @@ best_model = gcv_model_select.best_estimator_
 # best_model.fit(X_train, y_train)
 
 
-train_acc = accuracy_score(y_true=y_train, y_pred=best_model.predict(X_train))
-test_acc = accuracy_score(y_true=y_test, y_pred=best_model.predict(X_test))
-
-print('Accuracy %.2f%% (average over k-fold CV test folds)' %
-      (100 * gcv_model_select.best_score_))
-print('Best Parameters: %s' % gcv_model_select.best_params_)
-
-print('Training Accuracy: %.2f%%' % (100 * train_acc))
-print('Test Accuracy: %.2f%%' % (100 * test_acc))
+# train_acc = accuracy_score(y_true=y_train, y_pred=best_model.predict(X_train))
+# test_acc = accuracy_score(y_true=y_test, y_pred=best_model.predict(X_test))
+#
+# print('Accuracy %.2f%% (average over k-fold CV test folds)' %
+#       (100 * gcv_model_select.best_score_))
+# print('Best Parameters: %s' % gcv_model_select.best_params_)
+#
+# print('Training Accuracy: %.2f%%' % (100 * train_acc))
+# print('Test Accuracy: %.2f%%' % (100 * test_acc))

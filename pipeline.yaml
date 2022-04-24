@@ -25,7 +25,7 @@ tasks:
         data: products/data/features.csv
         nb: products/reports/features.ipynb
       params:
-        features: '{{features}}'
+        features: '{{features_odds}}'
         target: '{{TARGET}}'
 
     - source: scripts/nested_cv.py

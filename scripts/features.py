@@ -125,6 +125,8 @@ features = [
     "B_OPP_CLINCH_ATT",
     "B_OPP_GROUND",
     "B_OPP_GROUND_ATT",
+    "R_ODDS",
+    "B_ODDS",
 ]
 target = ["WINNER"]
 upstream = {"data-transform": "/home/m/repo/mma/products/data/data.csv"}
