@@ -16,8 +16,6 @@
 # ---
 
 # %% tags=["parameters"]
-
-
 upstream = None
 product = None
 target = None
@@ -56,7 +54,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from mlxtend.data import mnist_data
 from sklearn.metrics import accuracy_score
@@ -74,6 +72,12 @@ from autosklearn.pipeline.components.feature_preprocessing.extra_trees_preproc_f
 from autosklearn.pipeline.components.data_preprocessing.balancing.balancing import Balancing
 from sklearn.neural_network import MLPClassifier
 import sklearn
+from mlxtend.evaluate import confusion_matrix
+
+
+from mlxtend.plotting import plot_confusion_matrix
+import matplotlib.pyplot as plt
+
 
 # %%
 df = pd.read_csv(upstream['features']['data'])
@@ -143,6 +147,27 @@ print('\n%s | outer KL %.2f +/- %.2f' %
       ("market", market_kl.mean(),
        market_kl.std()))
 
+# prior
+print("prior r_win, blue_win")
+y_true = market['y_true'].values
+red_prior = y_true.sum() / len(y_true)
+blue_prior = 1 - red_prior
+print(f"red:{red_prior} blue:{blue_prior}")
+
+# prior
+print("market r_win, blue_win")
+y_hat = market['y_hat'].values
+red_prior_mkt = y_hat.sum() / len(y_hat)
+blue_prior_mkt = 1 - red_prior_mkt
+print(f"red:{red_prior_mkt} blue:{blue_prior_mkt}")
+
+confmat = confusion_matrix(market['y_true'].values, market['y_hat'].values)
+fig, ax = plot_confusion_matrix(conf_mat=confmat,
+                                show_absolute=False,
+                                show_normed=True,
+                                figsize=(4, 4))
+plt.show()
+
 # %%
 automl_sklearn = pickle.load(open('/home/m/repo/mma/backup/sklearn-automl_no_odds.pickle', 'rb'))
 # print(automl_sklearn)
@@ -157,8 +182,7 @@ automl_sklearn = pickle.load(open('/home/m/repo/mma/backup/sklearn-automl_no_odd
 leaderboard = automl_sklearn.leaderboard(detailed = True, ensemble_only=False)
 with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
-                       'display.precision', 3,
-                       ):
+                       'display.precision', 3,):
     print(leaderboard[0:5][['rank', 'type', 'balancing_strategy', 'feature_preprocessors']])
 
 
@@ -220,6 +244,8 @@ clf7 = MLPClassifier(max_iter=10000,random_state=1)
 
 clf8 = MLPClassifier(max_iter=10000,random_state=1)
 
+clf9 = GradientBoostingClassifier(random_state=1)
+
 # Building the pipelines
 pipe1 = Pipeline([('std', StandardScaler()),
                   ('clf1', clf1)])
@@ -236,14 +262,12 @@ pipe5 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting'))
 pipe6 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
                   ('clf6', clf6)])
 
-pipe7 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
-                  # ('std', StandardScaler()),
-                  ('ica', FastICA(algorithm="parallel", fun = "exp", whiten = True, max_iter=2500)),
-                  ('clf7', clf7)])
-
 pipe8 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
                   ('std', StandardScaler()),
                   ('clf8', clf8)])
+
+pipe9 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
+                  ('clf9', clf9)])
 
 # Setting up the parameter grids
 param_grid1 = [{'clf1__penalty': ['l2'],
@@ -263,7 +287,7 @@ param_grid4 = [{'clf4__kernel': ['rbf'],
 
 param_grid5 = [{'clf5__n_estimators': [100, 500, 1000, 5000]}]
 
-param_range = list(range(0, 20))
+
 param_grid6 = [{'clf6__n_estimators': [100, 500, 1000, 5000],
                 'clf6__criterion': ['gini', 'entropy'],
                 # 'clf6__min_samples_leaf': param_range,
@@ -291,13 +315,25 @@ param_grid8 = [{
         'clf8__learning_rate': ['adaptive'],
         }]
 
+param_grid9 = [{
+    "clf9__loss":["deviance"],
+    "clf9__learning_rate": [0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2],
+    "clf9__min_samples_split": np.linspace(0.1, 0.5, 12),
+    "clf9__min_samples_leaf": np.linspace(0.1, 0.5, 12),
+    "clf9__max_depth":[3,5,8],
+    "clf9__max_features":["log2","sqrt"],
+    "clf9__criterion": ["friedman_mse",  "mae"],
+    "clf9__subsample":[0.5, 0.618, 0.8, 0.85, 0.9, 0.95, 1.0],
+    "clf9__n_estimators":[10]
+    }]
+
 # %%
 # Setting up multiple GridSearchCV objects, 1 for each algorithm
 gridcvs = {}
 inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
 
-gcv = GridSearchCV(estimator=pipe8,
-                   param_grid=param_grid8,
+gcv = GridSearchCV(estimator=pipe9,
+                   param_grid=param_grid9,
                    scoring='accuracy',
                    n_jobs=-1,
                    cv=inner_cv,
