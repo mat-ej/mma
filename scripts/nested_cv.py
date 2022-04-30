@@ -76,6 +76,7 @@ from mlxtend.evaluate import confusion_matrix
 
 
 from mlxtend.plotting import plot_confusion_matrix
+from mlxtend.evaluate import accuracy_score
 import matplotlib.pyplot as plt
 
 
@@ -86,7 +87,7 @@ odds = market[['R_ODDS', 'B_ODDS']].values
 market_probs = sklearn.preprocessing.normalize(1 / odds, norm="l1")
 market['p_red'] = market_probs[:,0]
 market['p_blue'] = market_probs[:,1]
-market['y_hat'] = (market.p_red >= market.p_blue).astype(int)
+market['y_mkt'] = (market.p_red >= market.p_blue).astype(int)
 
 y = df[target]
 market['y_true'] = y
@@ -123,7 +124,7 @@ market_kl = []
 market_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
 for train_index, test_index in market_cv.split(X, y):
     fold = market.iloc[test_index, :]
-    fold_acc = (fold.y_true == fold.y_hat).sum() / len(fold)
+    fold_acc = (fold.y_true == fold.y_mkt).sum() / len(fold)
 
     y_true = fold.y_true.values
     p_true = np.column_stack([y_true, 1 - y_true])
@@ -139,6 +140,8 @@ for train_index, test_index in market_cv.split(X, y):
 
 market_acc = np.array(market_acc)
 market_kl = np.array(market_kl)
+
+# %%
 print('\n%s | outer ACC %.2f%% +/- %.2f' %
       ("market", market_acc.mean() * 100,
        market_acc.std() * 100))
@@ -148,25 +151,32 @@ print('\n%s | outer KL %.2f +/- %.2f' %
        market_kl.std()))
 
 # prior
-print("prior r_win, blue_win")
+print("ground truth r_win, blue_win")
 y_true = market['y_true'].values
 red_prior = y_true.sum() / len(y_true)
 blue_prior = 1 - red_prior
-print(f"red:{red_prior} blue:{blue_prior}")
+print(f"GT red:{red_prior} blue:{blue_prior}")
 
 # prior
 print("market r_win, blue_win")
-y_hat = market['y_hat'].values
-red_prior_mkt = y_hat.sum() / len(y_hat)
+y_mkt = market['y_mkt'].values
+red_prior_mkt = y_mkt.sum() / len(y_mkt)
 blue_prior_mkt = 1 - red_prior_mkt
-print(f"red:{red_prior_mkt} blue:{blue_prior_mkt}")
+print(f"mkt red:{red_prior_mkt} blue:{blue_prior_mkt}")
 
-confmat = confusion_matrix(market['y_true'].values, market['y_hat'].values)
+confmat = confusion_matrix(y_true, y_mkt)
 fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 show_absolute=False,
                                 show_normed=True,
                                 figsize=(4, 4))
 plt.show()
+
+# %%
+blue_acc = accuracy_score(y_true, y_mkt, method = 'binary', pos_label=0)
+red_acc = accuracy_score(y_true, y_mkt, method = 'binary', pos_label=1)
+
+print(f"mkt red:{red_acc} blue:{blue_acc}")
+
 
 # %%
 automl_sklearn = pickle.load(open('/home/m/repo/mma/backup/sklearn-automl_no_odds.pickle', 'rb'))
