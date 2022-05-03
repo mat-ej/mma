@@ -17,10 +17,6 @@
 # ---
 
 # %% tags=["parameters"]
-from imblearn.ensemble import BalancedRandomForestClassifier
-from sklearn.compose import ColumnTransformer, make_column_transformer
-from sklearn.impute import SimpleImputer
-
 upstream = None
 product = None
 target = None
@@ -73,56 +69,38 @@ product = {
 }
 
 
+
 # %%
-import numpy as np
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import StratifiedKFold
-from sklearn.model_selection import cross_validate
-from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier
-from sklearn.svm import SVC
-from mlxtend.data import mnist_data
-from sklearn.metrics import accuracy_score, make_scorer
-import pandas as pd
-import pickle
-from pprint import pprint
-import PipelineProfiler
-from sklearn.pipeline import Pipeline
-import autosklearn
-from sklearn.decomposition import FastICA
-
-from autosklearn.pipeline.components.feature_preprocessing import FeaturePreprocessorChoice
-from autosklearn.pipeline.components.data_preprocessing import DataPreprocessorChoice
-from autosklearn.pipeline.components.feature_preprocessing.extra_trees_preproc_for_classification import ExtraTreesPreprocessorClassification
-from autosklearn.pipeline.components.data_preprocessing.balancing.balancing import Balancing
-from sklearn.neural_network import MLPClassifier
-import sklearn
-from mlxtend.evaluate import confusion_matrix
-
-from sklearn.metrics import make_scorer
-from sklearn.metrics import *
-
-
-from mlxtend.plotting import plot_confusion_matrix
-from mlxtend.evaluate import accuracy_score
-import matplotlib.pyplot as plt
 import random
-import pandas as pd
-from sklearn.model_selection import cross_validate
-from sklearn.dummy import DummyClassifier
+from pprint import pprint
 
-from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import sklearn
+from autosklearn.pipeline.components.data_preprocessing.balancing.balancing import Balancing
 from imblearn.ensemble import BalancedRandomForestClassifier
 from imblearn.pipeline import make_pipeline as make_pipeline_with_sampler
 from imblearn.under_sampling import RandomUnderSampler
-from sklearn.compose import make_column_transformer
+
 from sklearn.compose import make_column_selector as selector
+from sklearn.compose import make_column_transformer
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import *
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import cross_validate
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from mlxtend.plotting import plot_confusion_matrix
 
 random.seed(random_seed)
 
@@ -219,6 +197,269 @@ X = X.astype(np.float32)
 X_train = X
 y_train = y
 
+
+# %%
+# dummy
+index = []
+scores = {"Accuracy": [], "Balanced accuracy": [], "Negative log loss": []}
+
+dummy_clf = DummyClassifier(strategy="most_frequent")
+scoring = ["accuracy", "balanced_accuracy", "neg_log_loss"]
+
+index += ["Dummy classifier"]
+cv_result = cross_validate(dummy_clf, X, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+# %%
+num_pipe = make_pipeline(
+    StandardScaler()
+)
+
+cat_pipe = make_pipeline(
+    SimpleImputer(strategy="constant", fill_value=0))
+
+
+
+preprocessor_linear = make_column_transformer(
+    (num_pipe, selector(dtype_include="float64")),
+    (cat_pipe, selector(dtype_include="int64")),
+    n_jobs=2,
+)
+
+
+lr_clf = make_pipeline(preprocessor_linear, LogisticRegression(max_iter=1000))
+
+index += ["Logistic regression"]
+cv_result = cross_validate(lr_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+# %%
+# RF
+from sklearn.compose import make_column_selector as selector
+
+num_pipe = SimpleImputer(strategy="mean", add_indicator=True)
+
+cat_pipe = make_pipeline(
+    SimpleImputer(strategy="constant", fill_value=0),
+)
+
+preprocessor_tree = make_column_transformer(
+    (num_pipe, selector(dtype_include="float64")),
+    (cat_pipe, selector(dtype_include="int64")),
+    n_jobs=2,
+)
+
+rf_clf = make_pipeline(
+    preprocessor_tree, RandomForestClassifier(n_jobs=2, max_depth=90, max_features='sqrt',min_samples_leaf=4, n_estimators=1800, random_state=random_seed)
+)
+
+index += ["Random forest cat"]
+cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+# %%
+lr_clf.set_params(logisticregression__class_weight="balanced")
+
+index += ["Logistic regression with balanced class weights"]
+cv_result = cross_validate(lr_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+# %%
+rf_clf.set_params(randomforestclassifier__class_weight="balanced")
+
+index += ["Random forest with balanced class weights"]
+cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+# %%
+
+
+lr_clf = make_pipeline_with_sampler(
+    preprocessor_linear,
+    RandomUnderSampler(random_state=42),
+    LogisticRegression(max_iter=1000),
+)
+
+index += ["Under-sampling + Logistic regression"]
+cv_result = cross_validate(lr_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+# %%
+rf_clf = make_pipeline_with_sampler(
+    preprocessor_tree,
+    RandomUnderSampler(random_state=42),
+    RandomForestClassifier(random_state=42, n_jobs=2),
+)
+index += ["Under-sampling + Random forest"]
+cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+# %%
+
+
+rf_clf = make_pipeline(
+    preprocessor_tree,
+    BalancedRandomForestClassifier(random_state=42, n_jobs=2),
+)
+
+index += ["Balanced random forest"]
+cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+
+# %%
+from sklearn.experimental import enable_hist_gradient_boosting  # noqa
+from sklearn.ensemble import HistGradientBoostingClassifier
+from imblearn.ensemble import BalancedBaggingClassifier
+
+bag_clf = make_pipeline(
+    preprocessor_tree,
+    BalancedBaggingClassifier(
+        base_estimator=HistGradientBoostingClassifier(random_state=42),
+        n_estimators=500,
+        random_state=42,
+        n_jobs=2,
+    ),
+)
+
+index += ["Balanced bag of histogram gradient boosting"]
+cv_result = cross_validate(bag_clf, X_fund, y, scoring=scoring)
+scores["Accuracy"].append(cv_result["test_accuracy"].mean())
+scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
+scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores
+
+
+# %%
+n = len(X_fund)
+bound = int(n * 0.25)
+X_train_df = X_fund.iloc[bound:-1,:]
+X_test_df = X_fund.iloc[0:bound,:]
+
+y_train = y[bound:-1]
+y_test = y[0:bound]
+# %%
+from sklearn.model_selection import RandomizedSearchCV
+
+
+# Number of trees in random forest
+n_estimators = [int(x) for x in np.linspace(start = 500, stop = 1500, num = 5)]
+# Number of features to consider at every split
+max_features = ['auto', 'sqrt']
+# Maximum number of levels in tree
+max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+max_depth.append(None)
+# Minimum number of samples required to split a node
+min_samples_split = [2, 5, 10]
+# Minimum number of samples required at each leaf node
+min_samples_leaf = [1, 2, 4]
+# Method of selecting samples for training each tree
+bootstrap = [True, False]
+
+# pipe5 = Pipeline([('prep', preprocessor_tree),
+#                   ('sampler', RandomUnderSampler(random_state=1)),
+#                   ('clf5', clf5)])
+
+# pipe5 = make_pipeline_with_sampler(
+#     preprocessor_tree,
+#     RandomUnderSampler(random_state=1),
+#     RandomForestClassifier(random_state=1, n_jobs=2))
+# pipe5.set_params(randomforestclassifier__class_weight="balanced")
+
+
+pipe5 = make_pipeline(
+    preprocessor_tree,
+    BalancedRandomForestClassifier(random_state=1, n_jobs=2),
+    )
+
+
+
+# Create the random grid
+# random_grid = {'randomforestclassifier__n_estimators': n_estimators,
+#                'randomforestclassifier__max_features': max_features,
+#                'randomforestclassifier__max_depth': max_depth,
+#                'randomforestclassifier__min_samples_split': min_samples_split,
+#                'randomforestclassifier__min_samples_leaf': min_samples_leaf,
+#                'randomforestclassifier__bootstrap': bootstrap}
+
+random_grid = {'balancedrandomforestclassifier__n_estimators': n_estimators,
+               'balancedrandomforestclassifier__max_features': max_features,
+               'balancedrandomforestclassifier__max_depth': max_depth,
+               'balancedrandomforestclassifier__min_samples_split': min_samples_split,
+               'balancedrandomforestclassifier__min_samples_leaf': min_samples_leaf,
+               'balancedrandomforestclassifier__bootstrap': bootstrap}
+pprint(random_grid)
+
+
+
+scorer = {'score': make_scorer(log_loss)}
+
+# %%
+rf_random = RandomizedSearchCV(scoring='neg_log_loss', estimator = pipe5, param_distributions = random_grid, n_iter = 100, cv = 3, verbose=3, random_state=42, n_jobs = -1, refit=True)
+# Fit the random search model
+rf_random.fit(X_train_df, y_train)
+
+# %%
+rf_final = rf_random.best_estimator_
+rf_final
+
+# ('randomforestclassifier',
+#  RandomForestClassifier(max_depth=90, max_features='sqrt',
+#                         min_samples_leaf=4, n_estimators=1800,
+#                         n_jobs=2, random_state=1))])
+
+# %%
+
+rf_final.fit(X_train_df, y_train)
+y_hat = rf_final.predict(X_test_df)
+confmat = confusion_matrix(y_test, y_hat)
+fig, ax = plot_confusion_matrix(conf_mat=confmat,
+                                show_absolute=True,
+                                show_normed=True,
+                                figsize=(4, 4))
+plt.show()
 
 # %%
 # Initializing Classifiers
@@ -372,261 +613,6 @@ for name, gs_est in sorted(gridcvs.items()):
           (name, scores_dict['test_score'].mean() * 100,
            scores_dict['test_score'].std() * 100))
 
-# %%
-# dummy
-index = []
-scores = {"Accuracy": [], "Balanced accuracy": []}
-
-dummy_clf = DummyClassifier(strategy="most_frequent")
-scoring = ["accuracy", "balanced_accuracy"]
-
-index += ["Dummy classifier"]
-cv_result = cross_validate(dummy_clf, X, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-# %%
-num_pipe = make_pipeline(
-    StandardScaler()
-)
-
-cat_pipe = make_pipeline(
-    SimpleImputer(strategy="constant", fill_value=0))
-
-
-
-preprocessor_linear = make_column_transformer(
-    (num_pipe, selector(dtype_include="float64")),
-    (cat_pipe, selector(dtype_include="int64")),
-    n_jobs=2,
-)
-
-
-lr_clf = make_pipeline(preprocessor_linear, LogisticRegression(max_iter=1000))
-
-index += ["Logistic regression"]
-cv_result = cross_validate(lr_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-# %%
-# RF
-from sklearn.compose import make_column_selector as selector
-from sklearn.compose import ColumnTransformer
-
-
-num_pipe = SimpleImputer(strategy="mean", add_indicator=True)
-
-cat_pipe = make_pipeline(
-    SimpleImputer(strategy="constant", fill_value=0),
-)
-
-preprocessor_tree = make_column_transformer(
-    (num_pipe, selector(dtype_include="float64")),
-    (cat_pipe, selector(dtype_include="int64")),
-    n_jobs=2,
-)
-
-rf_clf = make_pipeline(
-    preprocessor_tree, RandomForestClassifier(random_state=42, n_jobs=2)
-)
-
-index += ["Random forest cat"]
-cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-# %%
-lr_clf.set_params(logisticregression__class_weight="balanced")
-
-index += ["Logistic regression with balanced class weights"]
-cv_result = cross_validate(lr_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-# %%
-rf_clf.set_params(randomforestclassifier__class_weight="balanced")
-
-index += ["Random forest with balanced class weights"]
-cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-# %%
-
-
-lr_clf = make_pipeline_with_sampler(
-    preprocessor_linear,
-    RandomUnderSampler(random_state=42),
-    LogisticRegression(max_iter=1000),
-)
-
-index += ["Under-sampling + Logistic regression"]
-cv_result = cross_validate(lr_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-# %%
-rf_clf = make_pipeline_with_sampler(
-    preprocessor_tree,
-    RandomUnderSampler(random_state=42),
-    RandomForestClassifier(random_state=42, n_jobs=2),
-)
-index += ["Under-sampling + Random forest"]
-cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-# %%
-
-
-rf_clf = make_pipeline(
-    preprocessor_tree,
-    BalancedRandomForestClassifier(random_state=42, n_jobs=2),
-)
-
-index += ["Balanced random forest"]
-cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-
-# %%
-from sklearn.experimental import enable_hist_gradient_boosting  # noqa
-from sklearn.ensemble import HistGradientBoostingClassifier
-from imblearn.ensemble import BalancedBaggingClassifier
-
-bag_clf = make_pipeline(
-    preprocessor_tree,
-    BalancedBaggingClassifier(
-        base_estimator=HistGradientBoostingClassifier(random_state=42),
-        n_estimators=10,
-        random_state=42,
-        n_jobs=2,
-    ),
-)
-
-index += ["Balanced bag of histogram gradient boosting"]
-cv_result = cross_validate(bag_clf, X_fund, y, scoring=scoring)
-scores["Accuracy"].append(cv_result["test_accuracy"].mean())
-scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
-
-df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
-
-# %%
-n = len(X_fund)
-bound = int(n * 0.25)
-X_train_df = X_fund.iloc[bound:-1,:]
-X_test_df = X_fund.iloc[0:bound,:]
-
-y_train = y[bound:-1]
-y_test = y[0:bound]
-# %%
-from sklearn.model_selection import RandomizedSearchCV
-
-
-# Number of trees in random forest
-n_estimators = [int(x) for x in np.linspace(start = 500, stop = 1500, num = 5)]
-# Number of features to consider at every split
-max_features = ['auto', 'sqrt']
-# Maximum number of levels in tree
-max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
-max_depth.append(None)
-# Minimum number of samples required to split a node
-min_samples_split = [2, 5, 10]
-# Minimum number of samples required at each leaf node
-min_samples_leaf = [1, 2, 4]
-# Method of selecting samples for training each tree
-bootstrap = [True, False]
-
-# pipe5 = Pipeline([('prep', preprocessor_tree),
-#                   ('sampler', RandomUnderSampler(random_state=1)),
-#                   ('clf5', clf5)])
-
-# pipe5 = make_pipeline_with_sampler(
-#     preprocessor_tree,
-#     RandomUnderSampler(random_state=1),
-#     RandomForestClassifier(random_state=1, n_jobs=2))
-# pipe5.set_params(randomforestclassifier__class_weight="balanced")
-
-
-pipe5 = make_pipeline(
-    preprocessor_tree,
-    BalancedRandomForestClassifier(random_state=1, n_jobs=2),
-    )
-
-
-
-# Create the random grid
-# random_grid = {'randomforestclassifier__n_estimators': n_estimators,
-#                'randomforestclassifier__max_features': max_features,
-#                'randomforestclassifier__max_depth': max_depth,
-#                'randomforestclassifier__min_samples_split': min_samples_split,
-#                'randomforestclassifier__min_samples_leaf': min_samples_leaf,
-#                'randomforestclassifier__bootstrap': bootstrap}
-
-random_grid = {'balancedrandomforestclassifier__n_estimators': n_estimators,
-               'balancedrandomforestclassifier__max_features': max_features,
-               'balancedrandomforestclassifier__max_depth': max_depth,
-               'balancedrandomforestclassifier__min_samples_split': min_samples_split,
-               'balancedrandomforestclassifier__min_samples_leaf': min_samples_leaf,
-               'balancedrandomforestclassifier__bootstrap': bootstrap}
-pprint(random_grid)
-
-
-
-scorer = {'score': make_scorer(log_loss)}
-
-# %%
-rf_random = RandomizedSearchCV(scoring='neg_log_loss', estimator = pipe5, param_distributions = random_grid, n_iter = 100, cv = 3, verbose=3, random_state=42, n_jobs = -1, refit=True)
-# Fit the random search model
-rf_random.fit(X_train_df, y_train)
-
-# %%
-rf_final = rf_random.best_estimator_
-rf_final
-
-# ('randomforestclassifier',
-#  RandomForestClassifier(max_depth=90, max_features='sqrt',
-#                         min_samples_leaf=4, n_estimators=1800,
-#                         n_jobs=2, random_state=1))])
-
-# %%
-
-rf_final.fit(X_train_df, y_train)
-y_hat = rf_final.predict(X_test_df)
-confmat = confusion_matrix(y_test, y_hat)
-fig, ax = plot_confusion_matrix(conf_mat=confmat,
-                                show_absolute=True,
-                                show_normed=True,
-                                figsize=(4, 4))
-plt.show()
 # %%
 i = 0
 for train_index, test_index in outer_cv.split(X, y):
