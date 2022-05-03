@@ -25,7 +25,7 @@ tasks:
         data: products/data/features_odds_alt.csv
         nb: products/reports/features_odds_alt.ipynb
       params:
-        features: '{{features_odds_alt}}'
+        features: '{{features_odds_alt_all}}'
         target: '{{TARGET_ALT}}'
 
     - source: scripts/nested_cv_alt.py
@@ -36,9 +36,10 @@ tasks:
         model: products/models/nested_cv_alt.pt
       params:
         target: '{{TARGET_ALT}}'
-        odds_cols: '{{ODDS_COLS_ALT}}'
+        odds_cols: '{{ODDS_COLS_ALL}}'
         random_seed: '{{RANDOM_SEED}}'
-        test_ratio: 0.2
+        cat_features: '{{CAT_FEATURES}}'
+        test_ratio: 0
         inner_splits: 2
         outer_splits: 5
 

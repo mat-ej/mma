@@ -25,6 +25,20 @@ features = None
 # + tags=["injected-parameters"]
 # Parameters
 features = [
+    "TITLE_BOUT",
+    "BANTAMWEIGHT",
+    "CATCH WEIGHT",
+    "FEATHERWEIGHT",
+    "FLYWEIGHT",
+    "HEAVYWEIGHT",
+    "LIGHT HEAVYWEIGHT",
+    "LIGHTWEIGHT",
+    "MIDDLEWEIGHT",
+    "WELTERWEIGHT",
+    "WOMENS BANTAMWEIGHT",
+    "WOMENS FEATHERWEIGHT",
+    "WOMENS FLYWEIGHT",
+    "WOMENS STRAWEIGHT",
     "R_AGE",
     "R_HEIGHT",
     "R_REACH",
@@ -125,14 +139,20 @@ features = [
     "B_OPP_CLINCH_ATT",
     "B_OPP_GROUND",
     "B_OPP_GROUND_ATT",
+    "R_DEC_ODDS",
+    "B_DEC_ODDS",
+    "R_SUB_ODDS",
+    "B_SUB_ODDS",
+    "R_KO_ODDS",
+    "B_KO_ODDS",
     "R_ODDS",
     "B_ODDS",
 ]
-target = ["WINNER"]
-upstream = {"data-transform": "/home/m/repo/mma/products/data/data.csv"}
+target = ["R_DEC", "B_DEC", "R_SUB", "B_SUB", "R_KO", "B_KO"]
+upstream = {"data-transform": "/home/m/repo/mma/products/data/data_alt.csv"}
 product = {
-    "data": "/home/m/repo/mma/products/data/features.csv",
-    "nb": "/home/m/repo/mma/products/reports/features.ipynb",
+    "data": "/home/m/repo/mma/products/data/features_odds_alt.csv",
+    "nb": "/home/m/repo/mma/products/reports/features_odds_alt.ipynb",
 }
 
 # -

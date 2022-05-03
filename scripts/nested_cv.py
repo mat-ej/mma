@@ -99,7 +99,15 @@ def kl(P, Q):
 def st_kl(R, Q):
     return (R[R>0] * np.log(R[R>0] / Q[R>0])).sum()
 
+def KL_quick(P,Q):
+     epsilon = 0.00001
 
+     # You may want to instead make copies to avoid changing the np arrays.
+     P = P+epsilon
+     Q = Q+epsilon
+
+     divergence = np.sum(P*np.log(P/Q))
+     return divergence
 
 
 X_fund = df.drop(columns = target)
@@ -124,13 +132,14 @@ market_kl = []
 market_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
 for train_index, test_index in market_cv.split(X, y):
     fold = market.iloc[test_index, :]
-    fold_acc = (fold.y_true == fold.y_mkt).sum() / len(fold)
+    fold_acc = (fold.y_gt == fold.y_mkt).sum() / len(fold)
 
-    y_true = fold.y_true.values
+    y_true = fold.y_gt.values
     p_true = np.column_stack([y_true, 1 - y_true])
     p_market = fold[['p_red', 'p_blue']].values
 
     fold_kl = st_kl(p_true, p_market) / len(fold)
+    fold_kl_quick = KL()
     market_acc.append(fold_acc)
     market_kl.append(fold_kl)
 
