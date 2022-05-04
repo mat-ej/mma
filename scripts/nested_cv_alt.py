@@ -16,7 +16,7 @@
 #     injected_manually: true
 # ---
 
-# %% tags=["parameters"]
+# %% tags=["parameters"] trusted=true
 upstream = None
 product = None
 target = None
@@ -24,7 +24,7 @@ random_seed = None
 validation_ratio = None
 odds_cols = None
 
-# %% tags=["injected-parameters"]
+# %% tags=["injected-parameters"] trusted=true
 # Parameters
 target = ["R_DEC", "B_DEC", "R_SUB", "B_SUB", "R_KO", "B_KO"]
 odds_cols = [
@@ -70,7 +70,7 @@ product = {
 
 
 
-# %%
+# %% trusted=false
 import random
 from pprint import pprint
 
@@ -101,10 +101,13 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from mlxtend.plotting import plot_confusion_matrix
-
+from sklearn.experimental import enable_hist_gradient_boosting  # noqa
+from sklearn.ensemble import HistGradientBoostingClassifier
+from imblearn.ensemble import BalancedBaggingClassifier
 random.seed(random_seed)
 
-# %%
+
+# %% trusted=false
 # D(P||Q) KL divergence, relative entropy of P, Q
 def kl(P, Q):
     return (P * np.log(P / Q)).sum()
@@ -128,13 +131,13 @@ odds_cols_alt = [
     "B_KO_ODDS",
 ]
 
-# %%
+# %% trusted=false
 ## GT
 df = pd.read_csv(upstream['features-alt']['data'])
 y_one_hot = df[target]
 df['y_gt'] = df[target].values.argmax(axis = 1)
 
-# %%
+# %% trusted=false
 ## Market
 market = df[target + odds_cols_alt].dropna().reset_index(drop=True)
 odds = market[odds_cols_alt].values
@@ -145,7 +148,7 @@ market[prob_cols] = market_probs
 market['y_mkt'] = market_probs.argmax(axis=1)
 market['y_gt'] = market[target].values.argmax(axis = 1)
 
-# %%
+# %% trusted=false
 print("GT prior")
 gt_prior = y_one_hot.sum(axis = 0) / len(y_one_hot)
 print(gt_prior)
@@ -158,21 +161,28 @@ onehot_encoded = onehot_encoder.fit_transform(market['y_mkt'].values.reshape(-1,
 mkt_prior = onehot_encoded.sum(axis = 0) / len(market.y_mkt)
 print(mkt_prior)
 
-# %%
+# %% trusted=false
+from sklearn.metrics import balanced_accuracy_score
+
 print("market accuracy")
 print((market.y_mkt == market.y_gt).sum() / len(market.y_mkt))
-# %%
+
+balanced_accuracy_score(market.y_gt, market.y_mkt)
+# %% trusted=false
 
 
 confmat = confusion_matrix(market.y_gt, market.y_mkt)
 fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 show_absolute=False,
                                 show_normed=True,
+                                # class_names=[1, 0],
                                 figsize=(4, 4))
+fig.tight_layout()
+fig.savefig('fig/confmat_alt.eps', bbox_inches='tight', pad_inches=0)
 plt.show()
 
 
-# %%
+# %% trusted=false
 X_fund = df.drop(columns = target)
 if any(item in df.columns.tolist() for item in odds_cols):
     X_fund = X_fund.drop(columns=odds_cols)
@@ -187,6 +197,12 @@ num_features = X_fund.columns.difference(cat_features)
 X_fund[num_features] = X_fund[num_features].astype(np.float64)
 X_fund[cat_features] = X_fund[cat_features].astype(np.int64)
 
+X_fund['R_ODDS'] = df['R_ODDS']
+X_fund['R_ODDS'] = X_fund['R_ODDS'].astype(np.float64)
+
+X_fund['B_ODDS'] = df['B_ODDS']
+X_fund['B_ODDS'] = X_fund['B_ODDS'].astype(np.float64)
+
 print(X_fund.columns)
 print(X_fund.head())
 
@@ -198,7 +214,7 @@ X_train = X
 y_train = y
 
 
-# %%
+# %% trusted=false
 # dummy
 index = []
 scores = {"Accuracy": [], "Balanced accuracy": [], "Negative log loss": []}
@@ -215,7 +231,7 @@ scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
-# %%
+# %% trusted=false
 num_pipe = make_pipeline(
     StandardScaler()
 )
@@ -243,7 +259,7 @@ scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
-# %%
+# %% trusted=false
 # RF
 from sklearn.compose import make_column_selector as selector
 
@@ -272,7 +288,7 @@ scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
-# %%
+# %% trusted=false
 lr_clf.set_params(logisticregression__class_weight="balanced")
 
 index += ["Logistic regression with balanced class weights"]
@@ -284,7 +300,7 @@ scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
-# %%
+# %% trusted=false
 rf_clf.set_params(randomforestclassifier__class_weight="balanced")
 
 index += ["Random forest with balanced class weights"]
@@ -296,12 +312,12 @@ scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
-# %%
+# %% trusted=false
 
 
 lr_clf = make_pipeline_with_sampler(
     preprocessor_linear,
-    RandomUnderSampler(random_state=42),
+    RandomUnderSampler(random_state=1),
     LogisticRegression(max_iter=1000),
 )
 
@@ -314,11 +330,11 @@ scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
-# %%
+# %% trusted=false
 rf_clf = make_pipeline_with_sampler(
     preprocessor_tree,
-    RandomUnderSampler(random_state=42),
-    RandomForestClassifier(random_state=42, n_jobs=2),
+    RandomUnderSampler(random_state=1),
+    RandomForestClassifier(n_jobs=2, max_depth=90, max_features='auto',min_samples_leaf=4, n_estimators=1800, random_state=random_seed)
 )
 index += ["Under-sampling + Random forest"]
 cv_result = cross_validate(rf_clf, X_fund, y, scoring=scoring)
@@ -329,12 +345,16 @@ scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
-# %%
+# %% trusted=false
 
 
 rf_clf = make_pipeline(
     preprocessor_tree,
-    BalancedRandomForestClassifier(random_state=42, n_jobs=2),
+    BalancedRandomForestClassifier(bootstrap=False,
+                                   max_depth=30,
+                                   min_samples_leaf=4,
+                                   n_estimators=1250, n_jobs=2,
+                                   random_state=1)
 )
 
 index += ["Balanced random forest"]
@@ -347,16 +367,13 @@ df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
 
-# %%
-from sklearn.experimental import enable_hist_gradient_boosting  # noqa
-from sklearn.ensemble import HistGradientBoostingClassifier
-from imblearn.ensemble import BalancedBaggingClassifier
+# %% trusted=false
 
 bag_clf = make_pipeline(
     preprocessor_tree,
     BalancedBaggingClassifier(
         base_estimator=HistGradientBoostingClassifier(random_state=42),
-        n_estimators=500,
+        n_estimators=1000,
         random_state=42,
         n_jobs=2,
     ),
@@ -372,7 +389,7 @@ df_scores = pd.DataFrame(scores, index=index)
 df_scores
 
 
-# %%
+# %% trusted=false
 n = len(X_fund)
 bound = int(n * 0.25)
 X_train_df = X_fund.iloc[bound:-1,:]
@@ -380,7 +397,7 @@ X_test_df = X_fund.iloc[0:bound,:]
 
 y_train = y[bound:-1]
 y_test = y[0:bound]
-# %%
+# %% trusted=false
 from sklearn.model_selection import RandomizedSearchCV
 
 
@@ -388,6 +405,7 @@ from sklearn.model_selection import RandomizedSearchCV
 n_estimators = [int(x) for x in np.linspace(start = 500, stop = 1500, num = 5)]
 # Number of features to consider at every split
 max_features = ['auto', 'sqrt']
+max_features_bag = np.linspace(0,1, 10)
 # Maximum number of levels in tree
 max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
 max_depth.append(None)
@@ -397,6 +415,7 @@ min_samples_split = [2, 5, 10]
 min_samples_leaf = [1, 2, 4]
 # Method of selecting samples for training each tree
 bootstrap = [True, False]
+bootstrap_features = [True, False]
 
 # pipe5 = Pipeline([('prep', preprocessor_tree),
 #                   ('sampler', RandomUnderSampler(random_state=1)),
@@ -415,6 +434,17 @@ pipe5 = make_pipeline(
     )
 
 
+bag_clf = make_pipeline(
+    preprocessor_tree,
+    BalancedBaggingClassifier(
+        base_estimator=HistGradientBoostingClassifier(random_state=1),
+        n_estimators=500,
+        random_state=42,
+        n_jobs=2,
+    ),
+)
+
+
 
 # Create the random grid
 # random_grid = {'randomforestclassifier__n_estimators': n_estimators,
@@ -430,18 +460,25 @@ random_grid = {'balancedrandomforestclassifier__n_estimators': n_estimators,
                'balancedrandomforestclassifier__min_samples_split': min_samples_split,
                'balancedrandomforestclassifier__min_samples_leaf': min_samples_leaf,
                'balancedrandomforestclassifier__bootstrap': bootstrap}
+
+
+bag_grid = {'balancedbaggingclassifier__n_estimators': n_estimators,
+            'balancedbaggingclassifier__max_features': max_features_bag,
+            'balancedbaggingclassifier__bootstrap': bootstrap,
+            'balancedbaggingclassifier__bootstrap_features': bootstrap_features
+            }
 pprint(random_grid)
 
 
 
 scorer = {'score': make_scorer(log_loss)}
 
-# %%
-rf_random = RandomizedSearchCV(scoring='neg_log_loss', estimator = pipe5, param_distributions = random_grid, n_iter = 100, cv = 3, verbose=3, random_state=42, n_jobs = -1, refit=True)
+# %% trusted=false
+rf_random = RandomizedSearchCV(scoring='neg_log_loss', estimator = bag_clf, param_distributions = bag_grid, n_iter = 100, cv = 3, verbose=3, random_state=1, n_jobs = -1, refit=True)
 # Fit the random search model
 rf_random.fit(X_train_df, y_train)
 
-# %%
+# %% trusted=false
 rf_final = rf_random.best_estimator_
 rf_final
 
@@ -450,7 +487,12 @@ rf_final
 #                         min_samples_leaf=4, n_estimators=1800,
 #                         n_jobs=2, random_state=1))])
 
-# %%
+# BalancedRandomForestClassifier(bootstrap=False, max_depth=30,
+#                                                 min_samples_leaf=4,
+#                                                 n_estimators=1250, n_jobs=2,
+#                                                 random_state=1))]
+
+# %% trusted=false
 
 rf_final.fit(X_train_df, y_train)
 y_hat = rf_final.predict(X_test_df)
@@ -461,7 +503,7 @@ fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 figsize=(4, 4))
 plt.show()
 
-# %%
+# %% trusted=false
 # Initializing Classifiers
 clf1 = LogisticRegression(multi_class='multinomial',
                           solver='newton-cg',
@@ -554,7 +596,7 @@ pg8 = [{
 
 
 
-# %%
+# %% trusted=false
 gridcvs = {}
 inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
 
@@ -575,7 +617,7 @@ for pgrid, est, name in zip((pg1, pg2, pg3),
     gridcvs[name] = gcv
 
 
-# %%
+# %% trusted=false
 outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
 
 def customLoss(xArray, yArray):
@@ -613,7 +655,7 @@ for name, gs_est in sorted(gridcvs.items()):
           (name, scores_dict['test_score'].mean() * 100,
            scores_dict['test_score'].std() * 100))
 
-# %%
+# %% trusted=false
 i = 0
 for train_index, test_index in outer_cv.split(X, y):
     i += 1
@@ -648,7 +690,7 @@ for train_index, test_index in outer_cv.split(X, y):
    # model.fit(X_train, y_train)
    # print confusion_matrix(y_test, model.predict(X_test))
 
-# %%
+# %% trusted=false
 n = int(X.shape[0] * 0.4)
 X_train = X[n:]
 X_test = X[0:n]
@@ -659,11 +701,11 @@ y_test = y[0:n]
 y_train_mkt = y[n:]
 # y_test_mkt = y_mkt[0:n]
 
-# %%
+# %% trusted=false
 
 
 rf_final.fit(X_train, y_train)
-# %%
+# %% trusted=false
 y_hat = rf_final.predict(X_test)
 y_hat_probs = rf_final.predict_proba(X_test)
 print("model")
@@ -674,7 +716,7 @@ fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 figsize=(4, 4))
 plt.show()
 
-# %%
+# %% trusted=false
 
 # print("market")
 # confmat_mkt = confusion_matrix(y_test, y_hat_mkt)
@@ -694,7 +736,7 @@ plt.show()
 
 
 
-# %%
+# %% trusted=false
 len(test_index)
 
 #

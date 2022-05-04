@@ -395,6 +395,7 @@ min_samples_split = [2, 5, 10]
 min_samples_leaf = [1, 2, 4]
 # Method of selecting samples for training each tree
 bootstrap = [True, False]
+
 bootstrap_features = [True, False]
 
 # pipe5 = Pipeline([('prep', preprocessor_tree),
@@ -418,8 +419,7 @@ bag_clf = make_pipeline(
     preprocessor_tree,
     BalancedBaggingClassifier(
         base_estimator=HistGradientBoostingClassifier(random_state=1),
-        n_estimators=500,
-        random_state=42,
+        random_state=1,
         n_jobs=2,
     ),
 )

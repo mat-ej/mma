@@ -16,6 +16,8 @@
 # ---
 
 # %% tags=["parameters"]
+from sklearn.metrics import make_scorer
+
 upstream = None
 product = None
 target = None
@@ -43,42 +45,29 @@ product = {
 }
 
 
+import pickle
+
+import matplotlib.pyplot as plt
 # %%
 import numpy as np
+import pandas as pd
+import sklearn
+from autosklearn.pipeline.components.data_preprocessing.balancing.balancing import Balancing
+from mlxtend.evaluate import accuracy_score
+from mlxtend.evaluate import confusion_matrix
+from mlxtend.plotting import plot_confusion_matrix
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_validate
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
-from mlxtend.data import mnist_data
-from sklearn.metrics import accuracy_score
-import pandas as pd
-import pickle
-from pprint import pprint
-import PipelineProfiler
-from sklearn.pipeline import Pipeline
-import autosklearn
-from sklearn.decomposition import FastICA
-
-from autosklearn.pipeline.components.feature_preprocessing import FeaturePreprocessorChoice
-from autosklearn.pipeline.components.data_preprocessing import DataPreprocessorChoice
-from autosklearn.pipeline.components.feature_preprocessing.extra_trees_preproc_for_classification import ExtraTreesPreprocessorClassification
-from autosklearn.pipeline.components.data_preprocessing.balancing.balancing import Balancing
-from sklearn.neural_network import MLPClassifier
-import sklearn
-from mlxtend.evaluate import confusion_matrix
-
-
-from mlxtend.plotting import plot_confusion_matrix
-from mlxtend.evaluate import accuracy_score
-import matplotlib.pyplot as plt
-
+from sklearn.tree import DecisionTreeClassifier
 
 # %%
 df = pd.read_csv(upstream['features']['data'])
@@ -90,7 +79,7 @@ market['p_blue'] = market_probs[:,1]
 market['y_mkt'] = (market.p_red >= market.p_blue).astype(int)
 
 y = df[target]
-market['y_true'] = y
+market['y_gt'] = y
 
 # D(P||Q) KL divergence, relative entropy of P, Q
 def kl(P, Q):
@@ -139,7 +128,6 @@ for train_index, test_index in market_cv.split(X, y):
     p_market = fold[['p_red', 'p_blue']].values
 
     fold_kl = st_kl(p_true, p_market) / len(fold)
-    fold_kl_quick = KL()
     market_acc.append(fold_acc)
     market_kl.append(fold_kl)
 
@@ -161,22 +149,23 @@ print('\n%s | outer KL %.2f +/- %.2f' %
 
 # prior
 print("ground truth r_win, blue_win")
-y_true = market['y_true'].values
+y_true = market.y_gt.values
 red_prior = y_true.sum() / len(y_true)
 blue_prior = 1 - red_prior
 print(f"GT red:{red_prior} blue:{blue_prior}")
 
 # prior
 print("market r_win, blue_win")
-y_mkt = market['y_mkt'].values
+y_mkt = market.y_mkt.values
 red_prior_mkt = y_mkt.sum() / len(y_mkt)
 blue_prior_mkt = 1 - red_prior_mkt
 print(f"mkt red:{red_prior_mkt} blue:{blue_prior_mkt}")
 
-confmat = confusion_matrix(y_true, y_mkt)
+confmat = confusion_matrix(market.y_gt, market.y_mkt)
 fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 show_absolute=False,
                                 show_normed=True,
+                                # class_names = [1,0],
                                 figsize=(4, 4))
 plt.show()
 
@@ -233,8 +222,6 @@ estimator = automl_sklearn.get_models_with_weights()[0][1][2]
 
 # for name in FeaturePreprocessorChoice.get_components():
 #     print(name)
-
-from autosklearn.pipeline.components.feature_preprocessing import FeaturePreprocessorChoice
 
 # %%
 # Loading and splitting the dataset
@@ -374,6 +361,10 @@ gridcvs['MLP_STD'] = gcv
 
 # %%
 outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
+
+
+
+scoring = ["accuracy", "balanced_accuracy", "neg_log_loss"]
 
 for name, gs_est in sorted(gridcvs.items()):
     scores_dict = cross_validate(gs_est,
