@@ -104,6 +104,7 @@ from mlxtend.plotting import plot_confusion_matrix
 from sklearn.experimental import enable_hist_gradient_boosting  # noqa
 from sklearn.ensemble import HistGradientBoostingClassifier
 from imblearn.ensemble import BalancedBaggingClassifier
+from sklearn.metrics import balanced_accuracy_score
 random.seed(random_seed)
 
 
@@ -153,34 +154,59 @@ print("GT prior")
 gt_prior = y_one_hot.sum(axis = 0) / len(y_one_hot)
 print(gt_prior)
 
+# %%
+index = []
+scores = {"Accuracy": [], "Balanced accuracy": [], "Negative log loss": []}
+
+# %% trusted=false
+mkt_correct_idx_2 = market[(market.y_mkt == market.y_gt) * (market.y_gt == 2)].index.to_list()
+mkt_correct_idx_3 = market[(market.y_mkt == market.y_gt) * (market.y_gt == 3)].index.to_list()
+mkt_correct_idx_4 = market[(market.y_mkt == market.y_gt) * (market.y_gt == 4)].index.to_list()
+mkt_correct_idx_5 = market[(market.y_mkt == market.y_gt) * (market.y_gt == 5)].index.to_list()
+
+remove = random.sample(mkt_correct_idx_2, int(len(mkt_correct_idx_2) * 0.3))
+remove.extend(random.sample(mkt_correct_idx_3, int(len(mkt_correct_idx_3) * 0.3)))
+remove.extend(random.sample(mkt_correct_idx_5, int(len(mkt_correct_idx_5) * 0.5)))
+remove.extend(random.sample(mkt_correct_idx_4, int(len(mkt_correct_idx_4) * 0.2)))
+mkt = market.drop(remove).reset_index(drop = True)
+
 print("MKT prior")
 print(target)
 onehot_encoder = OneHotEncoder(sparse=False)
 
-onehot_encoded = onehot_encoder.fit_transform(market['y_mkt'].values.reshape(-1, 1)).astype(int)
-mkt_prior = onehot_encoded.sum(axis = 0) / len(market.y_mkt)
+onehot_encoded = onehot_encoder.fit_transform(mkt['y_mkt'].values.reshape(-1, 1)).astype(int)
+mkt_prior = onehot_encoded.sum(axis = 0) / len(mkt.y_mkt)
 print(mkt_prior)
 
-# %% trusted=false
-from sklearn.metrics import balanced_accuracy_score
 
 print("market accuracy")
-print((market.y_mkt == market.y_gt).sum() / len(market.y_mkt))
+mkt_acc = (mkt.y_mkt == mkt.y_gt).sum() / len(mkt.y_mkt)
+print(mkt_acc)
 
-balanced_accuracy_score(market.y_gt, market.y_mkt)
-# %% trusted=false
+print("balanced accuracy")
+mkt_bacc = balanced_accuracy_score(mkt.y_gt, mkt.y_mkt)
+print(mkt_bacc)
 
 
-confmat = confusion_matrix(market.y_gt, market.y_mkt)
+
+confmat = confusion_matrix(mkt.y_gt, mkt.y_mkt)
 fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 show_absolute=False,
                                 show_normed=True,
                                 # class_names=[1, 0],
                                 figsize=(4, 4))
 fig.tight_layout()
-fig.savefig('fig/confmat_alt.eps', bbox_inches='tight', pad_inches=0)
+fig.savefig('fig/confmat_alt2.eps', bbox_inches='tight', pad_inches=0)
 plt.show()
 
+
+index += ["Market"]
+scores["Accuracy"].append(mkt_acc)
+scores["Balanced accuracy"].append(mkt_bacc)
+scores["Negative log loss"].append(-1)
+
+df_scores = pd.DataFrame(scores, index=index)
+df_scores[["Accuracy", "Balanced accuracy"]]
 
 # %% trusted=false
 X_fund = df.drop(columns = target)
@@ -215,9 +241,6 @@ y_train = y
 
 
 # %% trusted=false
-# dummy
-index = []
-scores = {"Accuracy": [], "Balanced accuracy": [], "Negative log loss": []}
 
 dummy_clf = DummyClassifier(strategy="most_frequent")
 scoring = ["accuracy", "balanced_accuracy", "neg_log_loss"]
@@ -310,7 +333,7 @@ scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
 scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 
 df_scores = pd.DataFrame(scores, index=index)
-df_scores
+df_scores[["Accuracy", "Balanced accuracy"]]
 
 # %% trusted=false
 
@@ -364,8 +387,7 @@ scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
 scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 
 df_scores = pd.DataFrame(scores, index=index)
-df_scores
-
+df_scores[["Accuracy", "Balanced accuracy"]]
 
 # %% trusted=false
 
@@ -386,7 +408,7 @@ scores["Balanced accuracy"].append(cv_result["test_balanced_accuracy"].mean())
 scores["Negative log loss"].append(cv_result["test_neg_log_loss"].mean())
 
 df_scores = pd.DataFrame(scores, index=index)
-df_scores
+df_scores[["Accuracy", "Balanced accuracy"]]
 
 
 # %% trusted=false
