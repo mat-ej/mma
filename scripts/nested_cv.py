@@ -16,7 +16,6 @@
 # ---
 
 # %% tags=["parameters"]
-from sklearn.metrics import make_scorer
 
 upstream = None
 product = None
@@ -45,10 +44,12 @@ product = {
 }
 
 
+
+# %%
 import pickle
 
 import matplotlib.pyplot as plt
-# %%
+
 import numpy as np
 import pandas as pd
 import sklearn
@@ -68,6 +69,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import make_scorer
 
 # %%
 df = pd.read_csv(upstream['features']['data'])
@@ -88,23 +90,27 @@ def kl(P, Q):
 def st_kl(R, Q):
     return (R[R>0] * np.log(R[R>0] / Q[R>0])).sum()
 
-def KL_quick(P,Q):
-     epsilon = 0.00001
+def st_kl_score(y_true, y_prob):
+    kl_mean = st_kl(y_true, y_prob) / len(y_true)
 
-     # You may want to instead make copies to avoid changing the np arrays.
-     P = P+epsilon
-     Q = Q+epsilon
+    return kl_mean
 
-     divergence = np.sum(P*np.log(P/Q))
-     return divergence
+st_kl_scorer = make_scorer(st_kl_score, greater_is_better = True, needs_proba=True)
+
+# loss_func will negate the return value of my_custom_loss_func,
+#  which will be np.log(2), 0.693, given the values for ground_truth
+#  and predictions defined below.
 
 
 X_fund = df.drop(columns = target)
 if odds_cols in df.columns.tolist():
-    X_fund = df.drop(columns=odds_cols)
+    X_fund = X_fund.drop(columns=odds_cols)
 
 if any(item in df.columns.tolist() for item in odds_cols):
-    X_fund = df.drop(columns=odds_cols)
+    X_fund = X_fund.drop(columns=odds_cols)
+
+# X_fund['R_ODDS'] = market['R_ODDS']
+# X_fund['B_ODDS'] = market['B_ODDS']
 
 print(X_fund.columns)
 
@@ -125,14 +131,11 @@ for train_index, test_index in market_cv.split(X, y):
 
     y_true = fold.y_gt.values
     p_true = np.column_stack([y_true, 1 - y_true])
-    p_market = fold[['p_red', 'p_blue']].values
+    # p_market = fold[['p_red', 'p_blue']].values
 
-    fold_kl = st_kl(p_true, p_market) / len(fold)
+    fold_kl = st_kl(y_true, fold['p_red'].values) / len(fold)
     market_acc.append(fold_acc)
     market_kl.append(fold_kl)
-
-
-
 
 
 market_acc = np.array(market_acc)
@@ -175,60 +178,7 @@ red_acc = accuracy_score(y_true, y_mkt, method = 'binary', pos_label=1)
 
 print(f"mkt red:{red_acc} blue:{blue_acc}")
 
-
 # %%
-automl_sklearn = pickle.load(open('/home/m/repo/mma/backup/sklearn-automl_no_odds.pickle', 'rb'))
-# print(automl_sklearn)
-# print(test_df)
-# print("Statistics")
-# print(automl_sklearn.sprint_statistics())
-# print(automl.show_models())
-# pprint(automl_sklearn.show_models(), indent=4)
-# df_cv_results = pd.DataFrame(automl_sklearn).sort_values(by = 'mean_test_score', ascending = False)
-# print(df_cv_results)
-# %%
-leaderboard = automl_sklearn.leaderboard(detailed = True, ensemble_only=False)
-with pd.option_context('display.max_rows', None,
-                       'display.max_columns', None,
-                       'display.precision', 3,):
-    print(leaderboard[0:5][['rank', 'type', 'balancing_strategy', 'feature_preprocessors']])
-
-
-automl_models = automl_sklearn.get_models_with_weights()
-best_model = automl_models[0][1]
-
-transform_pip = Pipeline([('data_pre', automl_sklearn.get_models_with_weights()[0][1][0]),
-                         ('feature_pre', automl_sklearn.get_models_with_weights()[0][1][1])])
-
-estimator = automl_sklearn.get_models_with_weights()[0][1][2]
-# %%
-# best pipeline
-
-# balancing = Balancing(random_state=1, strategy='weighting')
-# preprocessor = ExtraTreesPreprocessorClassification(
-# bootstrap = False,
-# criterion = 'entropy',
-# max_depth = None,
-# max_features = 0.99299,
-# max_leaf_nodes = None,
-# min_impurity_decrease = 0,
-# min_samples_leaf  = 1,
-# min_samples_split = 2,
-# min_weight_fraction_leaf = 0,
-# n_estimators = 100,
-# )
-
-# classifier = ExtraTreesClassifier
-
-# for name in FeaturePreprocessorChoice.get_components():
-#     print(name)
-
-# %%
-# Loading and splitting the dataset
-# Note that this is a small (stratified) subset
-# of MNIST; it consists of 5000 samples only, that is,
-# 10% of the original MNIST dataset
-# http://yann.lecun.com/exdb/mnist/
 X = X.astype(np.float32)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y,
@@ -338,8 +288,8 @@ param_grid9 = [{
 gridcvs = {}
 inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
 
-gcv = GridSearchCV(estimator=pipe9,
-                   param_grid=param_grid9,
+gcv = GridSearchCV(estimator=pipe5,
+                   param_grid=param_grid5,
                    scoring='accuracy',
                    n_jobs=-1,
                    cv=inner_cv,
@@ -364,7 +314,11 @@ outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
 
 
 
-scoring = ["accuracy", "balanced_accuracy", "neg_log_loss"]
+scoring = {"accuracy": "accuracy",
+           "balanced_accuracy": "balanced_accuracy",
+           "neg_log_loss": "neg_log_loss",
+           "st_kl_score": st_kl_scorer
+           }
 
 for name, gs_est in sorted(gridcvs.items()):
     scores_dict = cross_validate(gs_est,
@@ -372,20 +326,29 @@ for name, gs_est in sorted(gridcvs.items()):
                                  y=y_train,
                                  cv=outer_cv,
                                  return_estimator=True,
+                                 scoring=scoring,
                                  n_jobs=6)
 
     print(50 * '-', '\n')
     print('Algorithm:', name)
     print('    Inner loop:')
 
-    for i in range(scores_dict['test_score'].shape[0]):
+    for i in range(scores_dict['test_accuracy'].shape[0]):
         print('\n        Best ACC (avg. of inner test folds) %.2f%%' % (scores_dict['estimator'][i].best_score_ * 100))
         print('        Best parameters:', scores_dict['estimator'][i].best_estimator_)
-        print('        ACC (on outer test fold) %.2f%%' % (scores_dict['test_score'][i] * 100))
+        print('        ACC (on outer test fold) %.2f%%' % (scores_dict['test_accuracy'][i] * 100))
 
     print('\n%s | outer ACC %.2f%% +/- %.2f' %
-          (name, scores_dict['test_score'].mean() * 100,
-           scores_dict['test_score'].std() * 100))
+          (name, scores_dict['test_accuracy'].mean() * 100,
+           scores_dict['test_accuracy'].std() * 100))
+
+    print('\n%s | outer B-ACC %.2f%% +/- %.2f' %
+          (name, scores_dict['test_balanced_accuracy'].mean() * 100,
+           scores_dict['test_balanced_accuracy'].std() * 100))
+
+    print('\n%s | outer KL %.2f%% +/- %.2f' %
+          (name, scores_dict['test_st_kl_score'].mean() * 100,
+           scores_dict['test_st_kl_score'].std() * 100))
 
 # %%
 gcv_model_select = GridSearchCV(estimator=pipe5,
@@ -394,7 +357,7 @@ gcv_model_select = GridSearchCV(estimator=pipe5,
                                 n_jobs=8,
                                 cv=inner_cv,
                                 verbose=1,
-                                refit=True)
+                                refit=False)
 
 gcv_model_select.fit(X_train, y_train)
 
