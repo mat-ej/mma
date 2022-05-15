@@ -42,9 +42,6 @@ product = {
     "nb": "/home/m/repo/mma/products/reports/nested_cv.ipynb",
     "model": "/home/m/repo/mma/products/models/nested_cv.pt",
 }
-
-
-
 # %%
 import pickle
 
@@ -69,7 +66,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import make_scorer
+from sklearn.metrics import make_scorer, balanced_accuracy_score
 
 # %%
 df = pd.read_csv(upstream['features']['data'])
@@ -84,22 +81,15 @@ y = df[target]
 market['y_gt'] = y
 
 # D(P||Q) KL divergence, relative entropy of P, Q
-def kl(P, Q):
-    return (P * np.log(P / Q)).sum()
-
 def st_kl(R, Q):
     return (R[R>0] * np.log(R[R>0] / Q[R>0])).sum()
 
 def st_kl_score(y_true, y_prob):
-    kl_mean = st_kl(y_true, y_prob) / len(y_true)
-
+    # leave out zeros in y.
+    kl_mean = st_kl(y_true, y_prob) / len(y_true[y_true == 1])
     return kl_mean
 
 st_kl_scorer = make_scorer(st_kl_score, greater_is_better = True, needs_proba=True)
-
-# loss_func will negate the return value of my_custom_loss_func,
-#  which will be np.log(2), 0.693, given the values for ground_truth
-#  and predictions defined below.
 
 
 X_fund = df.drop(columns = target)
@@ -123,22 +113,26 @@ y = y.values.ravel()
 # %%
 
 market_acc = []
+market_bacc = []
 market_kl = []
 market_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
 for train_index, test_index in market_cv.split(X, y):
     fold = market.iloc[test_index, :]
-    fold_acc = (fold.y_gt == fold.y_mkt).sum() / len(fold)
+    fold_acc = accuracy_score(fold.y_gt, fold.y_mkt)
+    fold_bacc = balanced_accuracy_score(fold.y_gt, fold.y_mkt)
 
     y_true = fold.y_gt.values
     p_true = np.column_stack([y_true, 1 - y_true])
     # p_market = fold[['p_red', 'p_blue']].values
 
-    fold_kl = st_kl(y_true, fold['p_red'].values) / len(fold)
+    fold_kl = st_kl_score(y_true, fold['p_red'].values)
     market_acc.append(fold_acc)
+    market_bacc.append(fold_bacc)
     market_kl.append(fold_kl)
 
 
 market_acc = np.array(market_acc)
+market_bacc = np.array(market_bacc)
 market_kl = np.array(market_kl)
 
 # %%
@@ -146,7 +140,11 @@ print('\n%s | outer ACC %.2f%% +/- %.2f' %
       ("market", market_acc.mean() * 100,
        market_acc.std() * 100))
 
-print('\n%s | outer KL %.2f +/- %.2f' %
+print('\n%s | outer B-ACC %.2f%% +/- %.2f' %
+      ("market", market_bacc.mean() * 100,
+       market_bacc.std() * 100))
+
+print('\n%s | outer KL %.2f +/- %.2f \n' %
       ("market", market_kl.mean(),
        market_kl.std()))
 
@@ -171,12 +169,6 @@ fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 # class_names = [1,0],
                                 figsize=(4, 4))
 plt.show()
-
-# %%
-blue_acc = accuracy_score(y_true, y_mkt, method = 'binary', pos_label=0)
-red_acc = accuracy_score(y_true, y_mkt, method = 'binary', pos_label=1)
-
-print(f"mkt red:{red_acc} blue:{blue_acc}")
 
 # %%
 X = X.astype(np.float32)
@@ -241,7 +233,8 @@ param_grid4 = [{'clf4__kernel': ['rbf'],
                {'clf4__kernel': ['linear'],
                 'clf4__C': np.power(10., np.arange(-4, 4))}]
 
-param_grid5 = [{'clf5__n_estimators': [100, 500, 1000, 5000]}]
+param_grid5 = [{'clf5__n_estimators': [100, 500]}]
+
 
 
 param_grid6 = [{'clf6__n_estimators': [100, 500, 1000, 5000],
@@ -283,7 +276,8 @@ param_grid9 = [{
     "clf9__n_estimators":[10]
     }]
 
-# %%
+# %%ssh -o 'PubkeyAuthentication=no' 'uhrinmat@147.32.83.226'
+
 # Setting up multiple GridSearchCV objects, 1 for each algorithm
 gridcvs = {}
 inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
@@ -346,24 +340,23 @@ for name, gs_est in sorted(gridcvs.items()):
           (name, scores_dict['test_balanced_accuracy'].mean() * 100,
            scores_dict['test_balanced_accuracy'].std() * 100))
 
-    print('\n%s | outer KL %.2f%% +/- %.2f' %
-          (name, scores_dict['test_st_kl_score'].mean() * 100,
-           scores_dict['test_st_kl_score'].std() * 100))
+    print('\n%s | outer KL %.2f +/- %.2f' %
+          (name, scores_dict['test_st_kl_score'].mean(),
+           scores_dict['test_st_kl_score'].std()))
 
 # %%
-gcv_model_select = GridSearchCV(estimator=pipe5,
-                                param_grid=param_grid5,
-                                scoring='accuracy',
-                                n_jobs=8,
-                                cv=inner_cv,
-                                verbose=1,
-                                refit=False)
-
-gcv_model_select.fit(X_train, y_train)
+# gcv_model_select = GridSearchCV(estimator=pipe5,
+#                                 param_grid=param_grid5,
+#                                 scoring='accuracy',
+#                                 n_jobs=8,
+#                                 cv=inner_cv,
+#                                 verbose=1,
+#                                 refit=False)
+#
+# gcv_model_select.fit(X_train, y_train)
 
 # %%
-best_model = gcv_model_select.best_estimator_
-
+# best_model = gcv_model_select.best_estimator_
 
 ## We can skip the next step because we set refit=True
 ## so scikit-learn has already fit the model to the
