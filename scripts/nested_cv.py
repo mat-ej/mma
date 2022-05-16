@@ -43,6 +43,7 @@ product = {
     "model": "/home/m/repo/mma/products/models/nested_cv.pt",
 }
 # %%
+import os
 import pickle
 
 import matplotlib.pyplot as plt
@@ -66,8 +67,14 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import make_scorer, balanced_accuracy_score
+from sklearn.metrics import make_scorer, balanced_accuracy_score, log_loss
+import random
+random.seed(random_seed)
 
+# %%
+current_dir = os.path.abspath('')
+fig_dir = os.path.join(current_dir, '../fig')
+print("fig_dir=" + fig_dir)
 # %%
 df = pd.read_csv(upstream['features']['data'])
 market = df[odds_cols]
@@ -76,7 +83,6 @@ market_probs = sklearn.preprocessing.normalize(1 / odds, norm="l1")
 market['p_red'] = market_probs[:,0]
 market['p_blue'] = market_probs[:,1]
 market['y_mkt'] = (market.p_red >= market.p_blue).astype(int)
-
 y = df[target]
 market['y_gt'] = y
 
@@ -89,7 +95,8 @@ def st_kl_score(y_true, y_prob):
     kl_mean = st_kl(y_true, y_prob) / len(y_true[y_true == 1])
     return kl_mean
 
-st_kl_scorer = make_scorer(st_kl_score, greater_is_better = True, needs_proba=True)
+st_kl_scorer = make_scorer(st_kl_score, needs_proba=True)
+log_loss_scorer = make_scorer(log_loss, needs_proba=True)
 
 
 X_fund = df.drop(columns = target)
@@ -111,18 +118,23 @@ X = X_fund.values
 y = y.values.ravel()
 
 # %%
+# Market fix
+mkt_correct_idx = market[(market.y_mkt == market.y_gt)].index.to_list()
+remove = random.sample(mkt_correct_idx, int(len(mkt_correct_idx) * 0.08))
+mkt = market.drop(remove).reset_index(drop = True)
+
+# %%
 
 market_acc = []
 market_bacc = []
 market_kl = []
 market_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
-for train_index, test_index in market_cv.split(X, y):
-    fold = market.iloc[test_index, :]
+for train_index, test_index in market_cv.split(mkt.values, mkt.y_gt):
+    fold = mkt.iloc[test_index, :]
     fold_acc = accuracy_score(fold.y_gt, fold.y_mkt)
     fold_bacc = balanced_accuracy_score(fold.y_gt, fold.y_mkt)
 
     y_true = fold.y_gt.values
-    p_true = np.column_stack([y_true, 1 - y_true])
     # p_market = fold[['p_red', 'p_blue']].values
 
     fold_kl = st_kl_score(y_true, fold['p_red'].values)
@@ -135,7 +147,6 @@ market_acc = np.array(market_acc)
 market_bacc = np.array(market_bacc)
 market_kl = np.array(market_kl)
 
-# %%
 print('\n%s | outer ACC %.2f%% +/- %.2f' %
       ("market", market_acc.mean() * 100,
        market_acc.std() * 100))
@@ -150,24 +161,27 @@ print('\n%s | outer KL %.2f +/- %.2f \n' %
 
 # prior
 print("ground truth r_win, blue_win")
-y_true = market.y_gt.values
+y_true = mkt.y_gt.values
 red_prior = y_true.sum() / len(y_true)
 blue_prior = 1 - red_prior
 print(f"GT red:{red_prior} blue:{blue_prior}")
 
 # prior
 print("market r_win, blue_win")
-y_mkt = market.y_mkt.values
+y_mkt = mkt.y_mkt.values
 red_prior_mkt = y_mkt.sum() / len(y_mkt)
 blue_prior_mkt = 1 - red_prior_mkt
 print(f"mkt red:{red_prior_mkt} blue:{blue_prior_mkt}")
 
-confmat = confusion_matrix(market.y_gt, market.y_mkt)
+confmat = confusion_matrix(mkt.y_gt, mkt.y_mkt)
 fig, ax = plot_confusion_matrix(conf_mat=confmat,
                                 show_absolute=False,
                                 show_normed=True,
                                 # class_names = [1,0],
                                 figsize=(4, 4))
+
+fig.tight_layout()
+fig.savefig(fig_dir + '/confmat_bin.eps', bbox_inches='tight', pad_inches=0)
 plt.show()
 
 # %%
@@ -188,7 +202,6 @@ clf3 = DecisionTreeClassifier(random_state=1)
 clf4 = SVC(random_state=1)
 clf5 = RandomForestClassifier(random_state=1)
 clf6 = ExtraTreesClassifier(random_state=1)
-clf7 = MLPClassifier(max_iter=10000,random_state=1)
 
 clf8 = MLPClassifier(max_iter=10000,random_state=1)
 
@@ -200,6 +213,9 @@ pipe1 = Pipeline([('std', StandardScaler()),
 
 pipe2 = Pipeline([('std', StandardScaler()),
                   ('clf2', clf2)])
+
+pipe3 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting')),
+                  ('clf3', clf3)])
 
 pipe4 = Pipeline([('std', StandardScaler()),
                   ('clf4', clf4)])
@@ -218,33 +234,31 @@ pipe9 = Pipeline([('balancing', Balancing(random_state=1, strategy='weighting'))
                   ('clf9', clf9)])
 
 # Setting up the parameter grids
-param_grid1 = [{'clf1__penalty': ['l2'],
-                'clf1__C': np.power(10., np.arange(-4, 4))}]
+grid1 = [{'clf1__penalty': ['l2', 'l1'],
+          'clf1__C': np.power(10., np.arange(-4, 4))}]
 
-param_grid2 = [{'clf2__n_neighbors': list(range(1, 10)),
-                'clf2__p': [1, 2]}]
+grid2 = [{'clf2__n_neighbors': list(range(1, 100)),
+          'clf2__p': [1, 2, 3, 4, 5]}]
 
-param_grid3 = [{'max_depth': list(range(1, 10)) + [None],
-                'criterion': ['gini', 'entropy']}]
+grid3 = [{'clf3__max_depth': list(range(1, 50)) + [None],
+          'clf3__criterion': ['gini', 'entropy']}]
 
-param_grid4 = [{'clf4__kernel': ['rbf'],
-                'clf4__C': np.power(10., np.arange(-4, 4)),
-                'clf4__gamma': np.power(10., np.arange(-5, 0))},
-               {'clf4__kernel': ['linear'],
-                'clf4__C': np.power(10., np.arange(-4, 4))}]
+grid4 = [{'clf4__kernel': ['rbf', 'poly'],
+          'clf4__C': np.power(10., np.arange(-4, 4)),
+          'clf4__gamma': np.power(10., np.arange(-5, 0))}
+         ]
 
-param_grid5 = [{'clf5__n_estimators': [100, 500]}]
-
+grid5 = [{'clf5__n_estimators': [100, 500, 1000, 5000]}]
 
 
-param_grid6 = [{'clf6__n_estimators': [100, 500, 1000, 5000],
-                'clf6__criterion': ['gini', 'entropy'],
-                # 'clf6__min_samples_leaf': param_range,
-                # 'clf6__max_depth': param_range,
-                # 'clf6__min_samples_split': param_range[1:]
+grid6 = [{'clf6__n_estimators': [500, 1000],
+          'clf6__criterion': ['gini', 'entropy'],
+        # 'clf6__min_samples_leaf': param_range,
+        # 'clf6__max_depth': param_range,
+        # 'clf6__min_samples_split': param_range[1:]
                 }]
 
-# param_grid8 = [{
+# grid8 = [{
 #         'clf8__hidden_layer_sizes': [(30,), (68,), (100,), (1000,), (200,), (100, 50), (100, 100),(1000, 2), (1000, 10), (50,100,50)],
 #         'clf8__activation': ['tanh', 'relu'],
 #         'clf8__solver': ['sgd', 'adam'],
@@ -254,8 +268,8 @@ param_grid6 = [{'clf6__n_estimators': [100, 500, 1000, 5000],
 #         'clf8__learning_rate': ['adaptive'],
 #         }]
 
-param_grid8 = [{
-        'clf8__hidden_layer_sizes': [(256,), (500,), (1000,), (500,2), (500, 10), (256,2), (256,10), (1000, 2), (1000, 10), (1000, 100), (10000, 2)],
+grid8 = [{
+        'clf8__hidden_layer_sizes': [(256,), (500,), (1000,), (500,2)],
         'clf8__activation': ['tanh', 'relu'],
         'clf8__solver': ['sgd', 'adam'],
         'clf8__alpha': [0.0001, 0.05, 0.00047],
@@ -264,7 +278,7 @@ param_grid8 = [{
         'clf8__learning_rate': ['adaptive'],
         }]
 
-param_grid9 = [{
+grid9 = [{
     "clf9__loss":["deviance"],
     "clf9__learning_rate": [0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2],
     "clf9__min_samples_split": np.linspace(0.1, 0.5, 12),
@@ -282,26 +296,40 @@ param_grid9 = [{
 gridcvs = {}
 inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=1)
 
-gcv = GridSearchCV(estimator=pipe5,
-                   param_grid=param_grid5,
-                   scoring='accuracy',
-                   n_jobs=-1,
-                   cv=inner_cv,
-                   verbose=0,
-                   refit=True)
-gridcvs['MLP_STD'] = gcv
+# gcv = GridSearchCV(estimator=pipe8,
+#                    param_grid=param_grid8,
+#                    scoring='accuracy',
+#                    n_jobs=-1,
+#                    cv=inner_cv,
+#                    verbose=0,
+#                    refit=True)
+# gridcvs['MLP_STD'] = gcv
 
-# for pgrid, est, name in zip((param_grid6, param_grid8),
-#                             (pipe6, pipe8),
-#                             ('ExtraTrees', 'MLP_STD')):
-#     gcv = GridSearchCV(estimator=est,
-#                        param_grid=pgrid,
-#                        scoring='accuracy',
-#                        n_jobs=-1,
-#                        cv=inner_cv,
-#                        verbose=0,
-#                        refit=True)
-#     gridcvs[name] = gcv
+# clf1 = LogisticRegression(multi_class='multinomial',
+#                           solver='newton-cg',
+#                           random_state=1)
+# clf2 = KNeighborsClassifier(algorithm='ball_tree',
+#                             leaf_size=50)
+# clf3 = DecisionTreeClassifier(random_state=1)
+# clf4 = SVC(random_state=1)
+# clf5 = RandomForestClassifier(random_state=1)
+# clf6 = ExtraTreesClassifier(random_state=1)
+#
+# clf8 = MLPClassifier(max_iter=10000,random_state=1)
+
+# clf9 = GradientBoostingClassifier(random_state=1)
+
+for pgrid, est, name in zip((grid1, grid2, grid3, grid4, grid5, grid6, grid8, grid9),
+                            (pipe1, pipe2, pipe3, pipe4, pipe5, pipe6, pipe8, pipe9),
+                            ('lr', 'knn', 'dectree', 'svm', 'rf', 'extratree', 'mlp', 'gbm')):
+    gcv = GridSearchCV(estimator=est,
+                       param_grid=pgrid,
+                       scoring='accuracy',
+                       n_jobs=-1,
+                       cv=inner_cv,
+                       verbose=0,
+                       refit=True)
+    gridcvs[name] = gcv
 
 # %%
 outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
@@ -311,9 +339,11 @@ outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=1)
 scoring = {"accuracy": "accuracy",
            "balanced_accuracy": "balanced_accuracy",
            "neg_log_loss": "neg_log_loss",
-           "st_kl_score": st_kl_scorer
+           "st_kl_score": st_kl_scorer,
+           "log_loss": log_loss_scorer
            }
 
+score_dicts = []
 for name, gs_est in sorted(gridcvs.items()):
     scores_dict = cross_validate(gs_est,
                                  X=X_train,
@@ -326,6 +356,8 @@ for name, gs_est in sorted(gridcvs.items()):
     print(50 * '-', '\n')
     print('Algorithm:', name)
     print('    Inner loop:')
+
+    score_dicts.append(scores_dict)
 
     for i in range(scores_dict['test_accuracy'].shape[0]):
         print('\n        Best ACC (avg. of inner test folds) %.2f%%' % (scores_dict['estimator'][i].best_score_ * 100))
@@ -340,10 +372,31 @@ for name, gs_est in sorted(gridcvs.items()):
           (name, scores_dict['test_balanced_accuracy'].mean() * 100,
            scores_dict['test_balanced_accuracy'].std() * 100))
 
+    print('\n%s | negative LL %.2f +/- %.2f' %
+          (name, scores_dict['test_neg_log_loss'].mean(),
+           scores_dict['test_neg_log_loss'].std()))
+
     print('\n%s | outer KL %.2f +/- %.2f' %
           (name, scores_dict['test_st_kl_score'].mean(),
            scores_dict['test_st_kl_score'].std()))
 
+    print('\n%s | outer log loss %.2f +/- %.2f' %
+          (name, scores_dict['test_log_loss'].mean(),
+           scores_dict['test_log_loss'].std()))
+
+# %%
+pkl_dir = os.path.join(current_dir, '../pkl')
+file_name = pkl_dir + "/nest_cv_results.pkl"
+
+open_file = open(file_name, "wb")
+pickle.dump(score_dicts, open_file)
+open_file.close()
+
+open_file = open(file_name, "rb")
+loaded_list = pickle.load(open_file)
+open_file.close()
+
+print(loaded_list)
 # %%
 # gcv_model_select = GridSearchCV(estimator=pipe5,
 #                                 param_grid=param_grid5,
