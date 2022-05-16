@@ -285,7 +285,7 @@ grid9 = [{
     "clf9__min_samples_leaf": np.linspace(0.1, 0.5, 12),
     "clf9__max_depth":[3,5,8],
     "clf9__max_features":["log2","sqrt"],
-    "clf9__criterion": ["friedman_mse",  "mae"],
+    "clf9__criterion": ["friedman_mse",  "mse"],
     "clf9__subsample":[0.5, 0.618, 0.8, 0.85, 0.9, 0.95, 1.0],
     "clf9__n_estimators":[10]
     }]
