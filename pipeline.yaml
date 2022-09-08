@@ -11,33 +11,16 @@ meta:
 executor: serial
 
 tasks:
-    - source: func.util.data_transform
-      name: data-transform
+    - source: tasks/preprocess.py
+      name: preprocess
       upstream: null
-      product: products/data/data.csv
-      params:
-        file_path: '{{root}}/{{DATA_FILEPATH}}'
-
-    - source: scripts/features.py
-      name: features
-      upstream: [data-transform]
       product:
-        data: products/data/features.csv
-        nb: products/reports/features.ipynb
-      params:
-        features: '{{features_odds}}'
-        target: '{{TARGET}}'
+         nb: reports/preprocess.ipynb
+         data: products/data/preprocessed.csv
 
-    - source: scripts/nested_cv.py
-      name: nested-cv
-      upstream: [ features ]
+    - source: tasks/exploratory.py
+      name: exploratory
+      upstream: [preprocess]
       product:
-        nb: products/reports/nested_cv.ipynb
-        model: products/models/nested_cv.pt
-      params:
-        target: '{{TARGET}}'
-        odds_cols: '{{ODDS_COLS}}'
-        random_seed: '{{RANDOM_SEED}}'
-        test_ratio: 0.2
-        inner_splits: 2
-        outer_splits: 5
+        nb: reports/exploratory.ipynb
+        data: products/data/exploratory.csv
